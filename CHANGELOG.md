@@ -2,6 +2,10 @@
 
 Dates are when the work happened. This repo was created on 2026-10-07 from a private working repo, so its git history starts on that day; earlier work is recorded here instead of in backdated commits.
 
+## 2026-10-08
+
+- Made this repo public. The interactive results page is shared view-only and now links here.
+
 ## 2026-10-07
 
 - **Showcase repo:** this repo, with a case-study README and a chart script (`make_chart.py`). Rerunning the analysis here gives byte-identical results.
