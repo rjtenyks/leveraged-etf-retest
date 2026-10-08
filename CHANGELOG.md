@@ -1,0 +1,27 @@
+# Changelog
+
+Dates are when the work happened. This repo was created on 2026-10-07 from a private working repo, so its git history starts on that day; earlier work is recorded here instead of in backdated commits.
+
+## 2026-10-07
+
+- **Showcase repo:** this repo, with a case-study README and a chart script (`make_chart.py`). Rerunning the analysis here gives byte-identical results.
+- **Cross-machine handoff:** a private claude.ai page with a shared database, a file store and downloads, for passing notes, code and files between the laptop, the PC and the phone. Planned in plan mode, with a confidential-information rule added before approval.
+- **Checked in thinkorswim** on the Windows PC:
+  - the daily study and the watchlist column match the backtest (SOXL RSI(2) 25.8, buy triggers 147.35 and 153.13)
+  - the strategy report lists the same 57 trades at the same prices
+- **Fixes from that testing:**
+  - a next-session buy trigger in the study and the column
+  - blue first-hour shading that the user can change
+  - a note on thinkorswim's one-candle date shift in the strategy report
+  - zip downloads for `.ts` files
+  - the chart curves keep their final day
+- **thinkorswim models:** `LEV3X_Dip` study, strategy and watchlist column, `LEV3X_Intraday` study, `LEV3X_TueNight` strategy. Their rule logic was checked against the backtest: identical trades for all 12 rule and fund pairs.
+- **5-year retest:**
+  - daily prices Oct 7, 2021 – Oct 6, 2026; hourly prices Nov 7, 2023 – Oct 6, 2026
+  - 189 pattern tests with a false-discovery check, plus 8 trading rules on 3 funds
+  - Python standard library only
+  - results in `notes/soxl-labu-dpst-5yr-retest.md` and an interactive claude.ai results page
+
+## 2026-09-25
+
+- **Original two-year study** of SOXL, LABU and DPST (Sep 25, 2024 – Sep 24, 2026), as a claude.ai page. It's the starting point for this retest.
