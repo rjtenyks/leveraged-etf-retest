@@ -4,6 +4,7 @@ Dates are when the work happened. This repo was created on 2026-10-07 from a pri
 
 ## 2026-10-08
 
+- **Unit tests and CI** ([#1](https://github.com/rjtenyks/leveraged-etf-retest/issues/1)): standard-library tests for the statistics (against textbook values), the trade simulator, the chart script and the thinkScript headers, run by GitHub Actions on every pull request. 15 deliberate bugs, put in one at a time, were all caught. A code review found gaps in the first version (nine bugs that passed), and the tests were tightened until they failed too.
 - Made this repo public. The interactive results page is shared view-only and now links here.
 
 ## 2026-10-07

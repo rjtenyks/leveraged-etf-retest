@@ -72,6 +72,11 @@ def betainc(a, b, x):
     return 1 - front * _betacf(b, a, 1 - x) / b
 
 
+def t_pvalue(t, df):
+    """Two-sided p-value of Student's t with df degrees of freedom."""
+    return betainc(df / 2, 0.5, df / (df + t * t))
+
+
 def welch_p(a, b):
     """Two-sided p-value of Welch's t-test (do the two groups have different means?)."""
     if len(a) < 3 or len(b) < 3:
@@ -81,7 +86,7 @@ def welch_p(a, b):
         return None
     t = (mean(a) - mean(b)) / math.sqrt(va + vb)
     df = (va + vb) ** 2 / (va ** 2 / (len(a) - 1) + vb ** 2 / (len(b) - 1))
-    return betainc(df / 2, 0.5, df / (df + t * t))
+    return t_pvalue(t, df)
 
 
 def binom_p(k, n, p0):

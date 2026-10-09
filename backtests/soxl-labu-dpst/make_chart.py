@@ -23,8 +23,8 @@ L, R, T, B = 56, 150, 44, 34
 INK, MUTED, GRID = "#1f2a33", "#5f6b75", "#e2e6e9"
 
 
-def main():
-    bt = json.loads(SRC.read_text())["funds"]["SOXL"]["backtests"]
+def main(src=SRC, out_path=OUT):
+    bt = json.loads(src.read_text())["funds"]["SOXL"]["backtests"]
     dates = [d for d, _ in bt[SERIES[0][0]]["curve"]]
     lines = [(label, color, [v for _, v in bt[key]["curve"]]) for key, label, color in SERIES]
     lo = math.log(min(min(v) for _, _, v in lines) * 0.9)
@@ -62,8 +62,8 @@ def main():
         out.append(f'<circle cx="{xe:.1f}" cy="{ye:.1f}" r="4" fill="{color}" stroke="#ffffff" stroke-width="2"/>')
         out.append(f'<text x="{xe + 16:.1f}" y="{ly + 4:.1f}" font-size="12" fill="{INK}">{escape(label)} ${v:.2f}</text>')
     out.append("</svg>")
-    OUT.write_text("\n".join(out) + "\n")
-    print("saved", OUT)
+    out_path.write_text("\n".join(out) + "\n")
+    print("saved", out_path)
 
 
 if __name__ == "__main__":
