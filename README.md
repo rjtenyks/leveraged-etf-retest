@@ -14,6 +14,7 @@ I built it with Claude Code. The code, the models and every number below came ou
 - **Verification at every step.** Statistics were checked against textbook values. The trading rules were written twice, independently, and both versions gave identical trades. Then thinkorswim's own backtest gave the same 57 trades at the same prices.
 - **Shipped into a real tool and fixed from real use.** The models run inside thinkorswim on a Windows PC. Testing them there led to four fixes. Those, and the other problems found along the way, are in [What broke and how we fixed it](#what-broke-and-how-we-fixed-it).
 - **The results, as tools an AI can use.** A small MCP server answers questions from the saved results, and a mini eval checks Claude's answers against the published numbers. See [Ask the results (MCP server)](#ask-the-results-mcp-server).
+- **An agent that checks the published numbers.** A read-only custom Claude Code agent checks every number in the README, the notes and the thinkScript labels against the results, with several auditors working at once. See [The numbers auditor](#the-numbers-auditor-a-custom-agent).
 - **Hands-on agentic engineering.** This covers how the work was planned and checked, the guardrails used, and moving work between three machines. See [How it was built with Claude Code](#how-it-was-built-with-claude-code).
 
 ## The question
@@ -128,9 +129,20 @@ The strategy replayed on SOXL, five years of daily candles:
 
 - **Design.** The answers are plain Python in [`results.py`](mcp_server/results.py), tested without the MCP package. [`server.py`](mcp_server/server.py) is a thin layer on top, built with the official Python SDK (`mcp` 2.3.0). A question it can't answer, such as an untested fund or a missing results file, comes back as a tool error that says what to do.
 - **Tests.** The answers are tested on a hand-made results file with values right at the cutoffs. The server is tested end to end over the MCP protocol, including starting it from the command in [`.mcp.json`](.mcp.json), as Claude Code does. CI installs the packages from [`requirements.txt`](requirements.txt), each pinned with its hash.
-- **Mini eval.** [`evals/run_evals.py`](evals/run_evals.py) asks Claude eight questions with known answers through `claude -p`. It runs from an empty folder, with Claude Code's own tools turned off and only this server available. Each answer must contain the published numbers and no invented ones, and Claude must have called a fitting tool. Nothing runs, and nothing is paid for, unless the `claude` CLI, `.venv` and current results are all in place. The first run scored 7 of 8. The miss was the grader's: Claude wrote "lost 76.8%", and the check only accepted "−76.8%". With that fixed: 8 of 8, in 35 seconds.
+- **Mini eval.** [`evals/run_evals.py`](evals/run_evals.py) asks Claude nine questions with known answers through `claude -p`. It runs from an empty folder, with Claude Code's own tools turned off and only this server available. Each answer must contain the published numbers and no invented ones, and Claude must have called a fitting tool. Nothing runs, and nothing is paid for, unless the `claude` CLI, `.venv` and current results are all in place. The first run scored 7 of 8. The miss was the grader's: Claude wrote "lost 76.8%", and the check only accepted "−76.8%". With that fixed: 8 of 8, in 35 seconds. A ninth question, for `get_section`, came later; all nine pass.
 
 To use it in Claude Code, set up the environment once (below), start `claude` in this folder, and approve the project's MCP server when asked. On Windows, change the command in [`.mcp.json`](.mcp.json) to `.venv\Scripts\python.exe`. Then ask, for example, "Did the FOMC-day pattern hold up on SOXL?"
+
+## The numbers auditor (a custom agent)
+
+[`.claude/agents/numbers-auditor.md`](.claude/agents/numbers-auditor.md) is a custom Claude Code agent, committed with the repo like the hook. Given a document, it finds every number that states a result, looks each one up through the MCP server, and reports the ones that don't match, with the right value and where it came from.
+
+- **Read-only.** Its only tools read files and query the MCP server, so several auditors can work on the same files at once. Agents that edit files at the same time would each need their own copy of the repo (a git worktree); these don't.
+- **Scaling out.** The README, the notes and the thinkScript files go to three auditors running at the same time: about 330 numbers checked in about 40 seconds, about half the time of one after another.
+- **What its first runs found.** Two numbers in the intraday study's labels, LABU's and DPST's worst-10% day, couldn't be traced to the saved results. The agent listed them as "not found" instead of guessing. They were right, but `analyze.py` computed them without saving them, which broke this repo's own rule; now it saves them. Reporting a planted error, the agent also gave the hourly day count per fund: 720 for SOXL, but 721 for LABU and DPST, where the notes said 720 for all three.
+- **Eval.** [`evals/eval_auditor.py`](evals/eval_auditor.py) plants seven wrong numbers (swapped digits, a flipped sign, nearby values) in a temporary copy of the documents and runs the three auditors on it. On Sonnet, they caught all 7, flagged nothing else, and gave the right value and its source for each, for about 50 cents. Haiku, at a tenth of the cost, caught 5, raised a false alarm and once returned no report, so the agent uses Sonnet. (Haiku's false alarm pointed at an ambiguous phrase in the notes, "negative in 2021–2023", which now names the years it means.) With `--clean`, the same script audits the real documents.
+
+To use it in Claude Code, ask for it by name, for example "Use the numbers-auditor agent to check the README and the notes". For several files, Claude runs several auditors in parallel.
 
 ## Run it
 
@@ -151,6 +163,7 @@ python3 -m venv .venv
 .venv/bin/pip install --require-hashes --only-binary :all: -r requirements.txt   # exactly the pinned, hashed packages
 .venv/bin/python -m unittest discover -s tests    # all the tests, the MCP server's included
 python3 evals/run_evals.py                         # the mini eval: needs Claude Code, signed in; a few cents of usage
+python3 evals/eval_auditor.py                      # the numbers auditor's eval (--clean audits the real documents); about 50 cents
 ```
 
 `requirements.txt` is generated from `requirements.in` with `pip-compile --generate-hashes` ([pip-tools](https://github.com/jazzband/pip-tools)), so it isn't edited by hand.
@@ -168,10 +181,10 @@ Yahoo only serves recent hourly bars, so a fresh download covers a later window 
 | `notes/` | The full results, pattern by pattern |
 | `docs/images/` | Screenshots and the chart |
 | `mcp_server/` | The MCP server: the answers ([`results.py`](mcp_server/results.py)) and the server ([`server.py`](mcp_server/server.py)) |
-| `evals/` | The mini eval for the MCP server |
+| `evals/` | The evals for the MCP server and the numbers auditor |
 | `tests/` | Unit tests, standard library `unittest` |
 | `.github/` | CI that runs the tests on every pull request ([`workflows/tests.yml`](.github/workflows/tests.yml)), and the branch protection settings that block a merge until they pass ([`branch-protection.json`](.github/branch-protection.json)) |
-| `.claude/` | Claude Code project settings and the hook that runs the tests after each edit |
+| `.claude/` | Claude Code project settings, the hook that runs the tests after each edit, and the numbers-auditor agent |
 | `.mcp.json` | Tells Claude Code how to start the MCP server |
 | `requirements.in`, `requirements.txt` | The MCP server's one dependency, and every package it needs, pinned with hashes |
 | [`CHANGELOG.md`](CHANGELOG.md) | What was done and when |
