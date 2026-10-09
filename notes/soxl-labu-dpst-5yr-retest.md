@@ -69,7 +69,7 @@ Read with care:
 | Standard oversold levels | no edge | RSI(14)<30 next day +2.5%, p=0.05, 4 of 4 years | Weak lean |
 | Structure (gaps, late lows, front-loading) | | gap fills 31% / 20% for 5%+ gaps; late low 60%; drop from open −3.3% median | Holds |
 | **DPST** | | | |
-| Quiet afternoons drift lower | −0.24%, p=0.002 | −0.15%, p=0.11; flat in the extra year | Weakened |
+| Quiet afternoons drift lower | −0.24%, p=0.002 | −0.15%, p=0.11; flat (+0.04%) in the year before the page's window, Nov 2023 – Oct 2024 | Weakened |
 | Overbought readings faded | RSI(14)>70 next 5 days −3.85%, p=0.013 | −1.30%, p=0.68 | Fails |
 | Gap-downs extend, then recover | first hour −0.68%, rest +1.33% | −0.17%, then +0.75% (p=0.08) | Weakened |
 | Gap-ups fade after 10:30 | not flagged | −0.57%, up 45%, 3 of 3 years, p=0.03 | New |
