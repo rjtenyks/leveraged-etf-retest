@@ -1,6 +1,6 @@
 """MCP server: questions about the 5-year SOXL · LABU · DPST retest, answered from the saved results.
 
-Three read-only tools, each a thin wrapper around results.py. It serves over stdio, and Claude Code in
+Four read-only tools, each a thin wrapper around results.py. It serves over stdio, and Claude Code in
 this folder starts it from .mcp.json. Run by hand, it waits for an MCP client on stdin:
   .venv/bin/python mcp_server/server.py
 Needs the mcp package from requirements.txt (see the README). The results come from analyze.py.
@@ -70,6 +70,19 @@ def pattern_verdict(query: str = "", fund: str | None = None) -> dict[str, Any]:
     to narrow the search.
     """
     return answer(results.pattern_verdict, query, fund)
+
+
+@server.tool(annotations=READ_ONLY)
+def get_section(fund: str, section: str) -> dict[str, Any]:
+    """The other numbers for one fund: one section of its results, with what each field means.
+
+    Sections: structure (sessions, biggest moves, opening gaps and how often they fill, 2-sigma days, weekly
+    lows), signals (what followed RSI, Bollinger, streak and big-move days), weekday, events (FOMC and
+    calendar days), vix (returns by VIX level), intraday (hourly data: moves by time of day, when lows come,
+    opening-gap and last-30-minute patterns) and current (the last day's close and indicators). Trading rules
+    are in get_results; pattern p- and q-values are in pattern_verdict.
+    """
+    return answer(results.get_section, fund, section)
 
 
 if __name__ == "__main__":

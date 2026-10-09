@@ -516,6 +516,7 @@ def intraday(sym, H):
     share = [sum(math.log(1 + h["segs"][k]) for h in down) / tot for k in range(8)]
     out["down_day_loss_share"] = dict(overnight=pct(share[0], 1), first_hour=pct(share[1], 1), rest=pct(sum(share[2:]), 1))
     p10 = quantile([h["ret"] for h in H], 0.10)
+    out["worst10_cutoff"] = pct(p10, 4)  # the intraday study rounds it to 3 decimals: 4 keep -4.9499 from reading as -4.95
     for name, days in [("low_hour_up_days", [h for h in H if h["ret"] > 0]), ("low_hour_worst10", [h for h in H if h["ret"] <= p10])]:
         cnt = collections.Counter(h["low_bar"] for h in days)
         out[name] = [round(100 * cnt[k] / len(days), 1) for k in range(7)]

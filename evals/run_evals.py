@@ -58,6 +58,9 @@ CASES = [
      "ask": "Is there a real FOMC-day effect on SOXL? Give the p-value.",
      "expect": [r"\b0?\.08\b|\b0?\.080\d?\b", r"no (real |reliable |statistical |significant )*(evidence|effect)|not (statistically )?significant|"
                                                r"isn'?t (real|significant)|not real|doesn'?t hold"], "tools": ["pattern_verdict"]},
+    {"id": "gap-fill-soxl",
+     "ask": "On SOXL, how often did an opening gap down of 5% or more get back to the prior close the same day?",
+     "expect": [r"\b27(\.0)?\s*%"], "tools": ["get_section"]},
     {"id": "unknown-fund",
      "ask": "What did the RSI(2) dip rule return on TQQQ?",
      "expect": [r"tqqq", r"\b(only|just) (covers?|tested|includes?|three)|not (covered|included|part of|tested)|"
@@ -74,7 +77,7 @@ def normalize(text):
 
 def parse_stream(lines):
     """What happened in one `claude -p --output-format stream-json` run."""
-    run = {"tools": [], "answer": "", "cost_usd": None, "error": None, "server": None}
+    run = {"tools": [], "answer": "", "cost_usd": None, "error": None, "server": None, "model": None, "seconds": None}
     for line in lines:
         try:
             event = json.loads(line)
@@ -83,13 +86,17 @@ def parse_stream(lines):
         kind = event.get("type")
         if kind == "system" and event.get("subtype") == "init":
             run["server"] = next((s["status"] for s in event.get("mcp_servers", []) if s.get("name") == SERVER), "missing")
+            run["model"] = event.get("model")
         elif kind == "assistant":
             run["tools"] += [b["name"] for b in event["message"]["content"] if b.get("type") == "tool_use"]
         elif kind == "result":
             run["answer"] = event.get("result") or ""
             run["cost_usd"] = event.get("total_cost_usd")
-            if event.get("is_error") or event.get("subtype") != "success":
+            run["seconds"] = (event.get("duration_ms") or 0) / 1000
+            if event.get("subtype") != "success":
                 run["error"] = event.get("subtype") or "error"
+            elif event.get("is_error"):  # a refused request, such as a usage limit: the reason is the result text
+                run["error"] = (event.get("result") or "error").strip()[:200]
     return run
 
 
@@ -120,7 +127,10 @@ def preflight():
     sys.path.insert(0, str(ROOT / "mcp_server"))
     import results
     try:
-        results.load()
+        funds = results.load()["funds"]
+        for fund in funds:  # every section, so results from an older analyze.py are caught here
+            for section in results.SECTIONS:
+                results.get_section(fund, section)
     except results.ResultsError as e:
         problems.append(str(e))
     return problems
@@ -150,7 +160,8 @@ def run_case(case, config, model):
             if p.returncode and not run["error"]:
                 run["error"] = f"exit {p.returncode}: {p.stderr.strip()[:200]}"
         except subprocess.TimeoutExpired:
-            run = {"tools": [], "answer": "", "cost_usd": None, "error": f"timeout after {TIMEOUT} s", "server": None}
+            run = {"tools": [], "answer": "", "cost_usd": None, "error": f"timeout after {TIMEOUT} s", "server": None,
+                   "model": None, "seconds": None}
     return {"id": case["id"], "ask": case["ask"], **run, "problems": grade(case, run)}
 
 

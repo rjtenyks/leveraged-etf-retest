@@ -19,7 +19,7 @@ WHAT HELD UP OVER 5 YEARS (Oct 7, 2021 - Oct 6, 2026, 0.05% cost per side)
         3 down days     +226%, 67 trades, 73% won, drawdown -31%, up 4 of 5 years
   LABU  RSI(2) dip      +74%, 63 trades, drawdown -56%, up 3 of 5 years (buy & hold -77%)
         Tuesday night   +88%, drawdown -23%, up every year (could still be luck: p = 0.07)
-  DPST  nothing. Every dip rule lost money or barely broke even with drawdowns of 60-80%.
+  DPST  nothing. Every dip rule lost money or barely broke even with drawdowns of 61-83%.
   Time of day (hourly prices, Nov 2023 - Oct 2026):
         SOXL up 6%+ at 3:30 -> last 30 minutes averaged -0.27% (the one result that passes the
              multiple-testing check)

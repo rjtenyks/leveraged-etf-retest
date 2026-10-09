@@ -21,12 +21,13 @@ run_evals = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run_evals)
 
 
-def stream(*tools, answer="", subtype="success", server="connected"):
+def stream(*tools, answer="", subtype="success", server="connected", is_error=None):
     """A minimal stream-json transcript: init, one assistant turn per tool call, then the result."""
     events = [{"type": "system", "subtype": "init", "mcp_servers": [{"name": run_evals.SERVER, "status": server}]}]
     events += [{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": run_evals.PREFIX + t, "input": {}}]}}
                for t in tools]
-    events.append({"type": "result", "subtype": subtype, "is_error": subtype != "success", "result": answer, "total_cost_usd": 0.05})
+    events.append({"type": "result", "subtype": subtype, "is_error": subtype != "success" if is_error is None else is_error,
+                   "result": answer, "total_cost_usd": 0.05})
     return [json.dumps(e) for e in events] + ["not json: a stray line"]
 
 
@@ -37,7 +38,8 @@ class Grading(unittest.TestCase):
     def test_parse_stream(self):
         run = run_evals.parse_stream(stream("compare_funds", "get_results", answer="It made **+283.7%**."))
         self.assertEqual(run, {"tools": [run_evals.PREFIX + "compare_funds", run_evals.PREFIX + "get_results"],
-                               "answer": "It made **+283.7%**.", "cost_usd": 0.05, "error": None, "server": "connected"})
+                               "answer": "It made **+283.7%**.", "cost_usd": 0.05, "error": None, "server": "connected",
+                               "model": None, "seconds": 0.0})
 
     def test_pass(self):
         for answer in ("+283.7% total, up 5 of 5 years", "About **284 %**; 5 of 5 years were up."):
@@ -60,6 +62,13 @@ class Grading(unittest.TestCase):
         self.assertIn("the MCP server was failed",
                       run_evals.grade(CASE, run_evals.parse_stream(stream("get_results", answer="283.7% 5 of 5", server="failed"))))
         self.assertIn("the MCP server was not reported", run_evals.grade(CASE, run_evals.parse_stream([])))
+
+    def test_a_refused_request_says_why(self):
+        # What every run returned once the usage limit was reached on 2026-10-09: a "success" that was an error.
+        limit = "You've hit your session limit \u00b7 resets 6:40am (America/New_York)"
+        run = run_evals.parse_stream(stream(answer=limit, is_error=True))
+        self.assertEqual(run["error"], limit)
+        self.assertIn(f"the run ended with {limit}", run_evals.grade(CASE, run))
 
     def test_losses_with_signs_or_words(self):
         labu = next(c for c in run_evals.CASES if c["id"] == "labu-buy-and-hold")
@@ -108,7 +117,7 @@ class Grading(unittest.TestCase):
         ids = [c["id"] for c in run_evals.CASES]
         self.assertEqual(len(ids), len(set(ids)))
         for case in run_evals.CASES:
-            self.assertLessEqual(set(case["tools"]), {"get_results", "compare_funds", "pattern_verdict"}, case["id"])
+            self.assertLessEqual(set(case["tools"]), {"get_results", "compare_funds", "pattern_verdict", "get_section"}, case["id"])
             for pattern in case["expect"]:
                 re.compile(pattern)
 
@@ -172,6 +181,10 @@ class CasesMatchTheData(unittest.TestCase):
         fomc = results.pattern_verdict("FOMC decision day", "SOXL")["matches"][0]
         self.assertTrue(fomc["verdict"].startswith("no evidence"))
         self.expect("fomc-soxl", f"p = {fomc['p']}: no evidence")
+
+    def test_section_cases(self):
+        gaps = {g["bucket"]: g for g in results.get_section("SOXL", "structure")["data"]["gaps"]}
+        self.expect("gap-fill-soxl", f"{gaps['gap <= -5%']['fill_rate']}%")
 
 
 if __name__ == "__main__":

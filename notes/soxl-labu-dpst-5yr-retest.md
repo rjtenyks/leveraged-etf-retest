@@ -5,7 +5,7 @@ The claude.ai page "SOXL · LABU · DPST Patterns" tested two years (Sep 25, 202
 The same results with charts per fund, and the code with copy buttons: [SOXL · LABU · DPST Retest](https://claude.ai/artifact/6KbNAQx5n3ZkcqvesSobm9).
 
 - **Daily tests:** Oct 7, 2021 – Oct 6, 2026, 1,254 sessions per fund. These five years include the 2022 chip crash (SOXL −71% in year 1) and the March 2023 regional-bank crisis (DPST −36% in one day).
-- **Time-of-day tests:** Yahoo keeps hourly bars back to Nov 7, 2023 only: 720 full days, about 3 years. Alpha Vantage sells older intraday data on a paid plan only. "3 of 3 years" below means the same direction in each of the three 12-month periods.
+- **Time-of-day tests:** Yahoo keeps hourly bars back to Nov 7, 2023 only: 720 full days for SOXL and 721 for LABU and DPST, about 3 years. Alpha Vantage sells older intraday data on a paid plan only. "3 of 3 years" below means the same direction in each of the three 12-month periods.
 - **Method:** same definitions as the page (Wilder RSI, Bollinger 20 ± 2, 2-sigma = twice the trailing 60-day standard deviation). Trades at the close, 0.05% cost per side, dividends included. Code in `backtests/soxl-labu-dpst/`. The prices are in `data/soxl-labu-dpst/` (not in git).
 - **Not retested:** CPI days. No source of past CPI release dates was reachable from this laptop (BLS blocks downloads). The page rated it weak (p = 0.6).
 
@@ -63,13 +63,13 @@ Read with care:
 | Gap-ups keep running in the first hour | +0.87%, p=0.008 | +0.75%, up 60%, 3 of 3 years, p=0.001 | **Holds** |
 | Flat opens fade early | −0.44%, p=0.045 | −0.50%, up 45%, 3 of 3 years, p=0.002 | **Holds, stronger** |
 | Wednesdays / Tuesday-night gap | median +1.82%, gap p=0.009 | gap +0.38%, p=0.07, positive all 5 years | Weaker but consistent |
-| Day after the Fed | +2.8%, p=0.010 | +0.34%, p=0.77 (negative in 2021–2023) | Fails |
+| Day after the Fed | +2.8%, p=0.010 | +0.34%, p=0.77 (negative in the first two years, Oct 2021 – Oct 2023) | Fails |
 | Big up days give some back | −0.95% next day | +0.03% | Fails |
 | Deep pullbacks recovered | next 5 days +4.3% | 30%+ below 20-day high: +1.77% vs +0.23% | Still weak |
 | Standard oversold levels | no edge | RSI(14)<30 next day +2.5%, p=0.05, 4 of 4 years | Weak lean |
 | Structure (gaps, late lows, front-loading) | | gap fills 31% / 20% for 5%+ gaps; late low 60%; drop from open −3.3% median | Holds |
 | **DPST** | | | |
-| Quiet afternoons drift lower | −0.24%, p=0.002 | −0.15%, p=0.11; flat in the extra year | Weakened |
+| Quiet afternoons drift lower | −0.24%, p=0.002 | −0.15%, p=0.11; flat (+0.04%) in hourly year 3, Nov 7, 2023 – Oct 6, 2024 | Weakened |
 | Overbought readings faded | RSI(14)>70 next 5 days −3.85%, p=0.013 | −1.30%, p=0.68 | Fails |
 | Gap-downs extend, then recover | first hour −0.68%, rest +1.33% | −0.17%, then +0.75% (p=0.08) | Weakened |
 | Gap-ups fade after 10:30 | not flagged | −0.57%, up 45%, 3 of 3 years, p=0.03 | New |
