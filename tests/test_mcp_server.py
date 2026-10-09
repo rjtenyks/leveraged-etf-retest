@@ -23,6 +23,11 @@ SKIP = "needs the mcp package: .venv/bin/pip install --require-hashes -r require
 
 class WithFixture(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        # IsolatedAsyncioTestCase runs asyncio in debug mode, which logs every step slower than 0.1 s and
+        # every subprocess; that noise would reach Claude through the hook. Real problems still fail the tests.
+        asyncio_log = logging.getLogger("asyncio")
+        self.addCleanup(asyncio_log.setLevel, asyncio_log.level)
+        asyncio_log.setLevel(logging.ERROR)
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.path = pathlib.Path(tmp.name) / "results_5y.json"

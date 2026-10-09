@@ -1,9 +1,10 @@
 """Claude Code hook: run the tests after Claude edits the analysis, the studies, the tests or this hook.
 
 Claude Code runs this after every Edit or Write (see .claude/settings.json) and passes the tool call
-as JSON on stdin. If the edited file is under backtests/, studies/, tests/, mcp_server/ or .claude/, the
-unit tests run, with the project's .venv Python when there is one, so the MCP server tests run too. When they fail or hang, the hook prints {"decision": "block", "reason": ...}, and Claude Code shows
-that to Claude. The edit itself stays; Claude sees what broke and fixes it.
+as JSON on stdin. If the edited file is under backtests/, studies/, tests/, mcp_server/, evals/ or
+.claude/, the unit tests run, with the project's .venv Python when there is one, so the MCP server tests
+run too. When they fail or hang, the hook prints {"decision": "block", "reason": ...}, and Claude Code
+shows that to Claude. The edit itself stays; Claude sees what broke and fixes it.
 
 After an edit under backtests/, it also runs check_reproducible.py, which needs the downloaded prices
 and saved results (it skips without them). If the full analysis crashes or hangs, that blocks too. If
@@ -19,7 +20,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR") or pathlib.Path(__file__).resolve().parents[2]).resolve()
-WATCHED = ("backtests", "studies", "tests", "mcp_server", ".claude")
+WATCHED = ("backtests", "studies", "tests", "mcp_server", "evals", ".claude")
 CHECK = ROOT / "backtests" / "soxl-labu-dpst" / "check_reproducible.py"
 # Time limits in seconds. Together they stay under the hook's 120 s timeout in .claude/settings.json.
 TEST_TIMEOUT = float(os.environ.get("RUN_TESTS_TIMEOUT", 50))  # tests/test_hook.py lowers it
