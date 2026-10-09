@@ -8,7 +8,7 @@ is, and each auditor connected to the server and checked a plausible share of it
 
 With --clean, nothing is planted: the auditors check the real documents, which is the agent's actual job.
 Needs the Claude Code CLI, signed in, the results from analyze.py and the .venv (see the README). On Sonnet, a
-run takes about 40 seconds and roughly 50 cents of usage.
+run takes under a minute and about 60 cents of usage.
 Run from the repo root:  python3 evals/eval_auditor.py   (options: --clean, --model)
 The report is saved to data/evals/. Uses only the Python standard library.
 """
