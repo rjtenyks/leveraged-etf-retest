@@ -5,12 +5,16 @@ MCP server answers today, so the eval can't drift from the data it's testing.
 """
 import importlib.util
 import json
+import pathlib
 import re
+import tempfile
 import unittest
+from unittest import mock
 
 from support import ROOT  # first: it puts mcp_server/ on sys.path
 
 import results
+from test_mcp_tools import NEEDS_RESULTS, have_results
 
 spec = importlib.util.spec_from_file_location("run_evals", ROOT / "evals" / "run_evals.py")
 run_evals = importlib.util.module_from_spec(spec)
@@ -69,6 +73,37 @@ class Grading(unittest.TestCase):
                 problems = run_evals.grade(labu, run_evals.parse_stream(stream("get_results", answer=answer)))
                 self.assertIn(f"answer lacks /{labu['expect'][0]}/", problems)  # 76.8% with no sign of a loss
 
+    def case(self, case_id):
+        return next(c for c in run_evals.CASES if c["id"] == case_id)
+
+    def graded(self, case_id, answer, tool="pattern_verdict"):
+        return run_evals.grade(self.case(case_id), run_evals.parse_stream(stream(tool, answer=answer)))
+
+    def test_a_stray_six_is_not_the_count(self):
+        # The code review's example: the count is wrong, but "6%+" used to satisfy the check for 6.
+        self.assertTrue(self.graded("how-many-tests", "189 tests, 9 had p below 0.05, luck would give 9.5; "
+                                                     "the one that held up was SOXL Up 6%+ at 3:30"))
+        self.assertTrue(self.graded("how-many-tests", "As of Oct 6, 2026: 189 tests; p < 0.05 for 9; 9.5 expected by luck"))
+        for answer in ("189 tests were run. 6 had p below 0.05, and luck alone would give about 9.5.",
+                       "| Tests | 189 |\n| p < 0.05 | 6 |\n| Expected by luck | 9.5 |",
+                       "Of 189 tests, six cleared p < 0.05; luck alone predicts 9.5."):
+            with self.subTest(answer):
+                self.assertEqual(self.graded("how-many-tests", answer), [])
+
+    def test_labu_needs_its_plus_sign(self):
+        self.assertEqual(self.graded("three-down-days", "SOXL +225.5%, LABU +9.4%, DPST -76.3%", "compare_funds"), [])
+        self.assertEqual(self.graded("three-down-days", "| Total | +226% | +9% | −76% |", "compare_funds"), [])
+        self.assertTrue(self.graded("three-down-days", "SOXL 225.5%, LABU -9%, DPST -76.3%", "compare_funds"))
+
+    def test_an_invented_tqqq_number_fails(self):
+        self.assertEqual(self.graded("unknown-fund", "There's no TQQQ result. This retest only covers SOXL, LABU and DPST.",
+                                     "get_results"), [])
+        problems = self.graded("unknown-fund", "TQQQ returned +45.2% with this rule. The retest only covers three funds.", "get_results")
+        self.assertEqual(problems, [f"answer has /{self.case('unknown-fund')['reject'][0]}/"])  # it says the right things, plus a made-up number
+
+    def test_server_name_matches_mcp_json(self):
+        self.assertEqual(list(json.loads((ROOT / ".mcp.json").read_text())["mcpServers"]), [run_evals.SERVER])
+
     def test_case_ids_unique_and_tools_real(self):
         ids = [c["id"] for c in run_evals.CASES]
         self.assertEqual(len(ids), len(set(ids)))
@@ -78,7 +113,35 @@ class Grading(unittest.TestCase):
                 re.compile(pattern)
 
 
-@unittest.skipUnless(results.RESULTS.exists(), "needs data/soxl-labu-dpst/results_5y.json (run fetch_prices.py, analyze.py)")
+class Preflight(unittest.TestCase):
+    """The eval checks what it needs before it pays for any request."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = pathlib.Path(tmp.name)
+        (self.root / ".mcp.json").write_text((ROOT / ".mcp.json").read_text())  # but no .venv here
+        for patch in (mock.patch.object(run_evals, "ROOT", self.root),
+                      mock.patch.object(results, "RESULTS", self.root / "missing.json")):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_lists_everything_missing(self):
+        with mock.patch.object(run_evals.shutil, "which", return_value=None):
+            problems = run_evals.preflight()
+        self.assertEqual(len(problems), 3)
+        self.assertIn("claude CLI", problems[0])
+        self.assertIn(".venv/bin/python is missing", problems[1])
+        self.assertIn("No results file", problems[2])
+
+    def test_stops_before_any_request(self):
+        with mock.patch.object(run_evals, "run_case", side_effect=AssertionError("a paid request was made")), \
+                self.assertRaises(SystemExit) as stop:
+            run_evals.main([])
+        self.assertIn("Not running the eval", str(stop.exception))
+
+
+@unittest.skipUnless(have_results(), NEEDS_RESULTS)
 class CasesMatchTheData(unittest.TestCase):
     """Each case's expected answer, as the server would give it today."""
 

@@ -2,8 +2,8 @@
 
 Each case runs `claude -p` from an empty temporary folder (no README or CLAUDE.md to read), with Claude
 Code's built-in tools turned off and only the server from .mcp.json loaded and pre-approved. A case
-passes when the answer contains the expected numbers or words, and Claude called one of the expected
-tools. Claude Code also loads your user-level settings (and any global CLAUDE.md), so run this in a
+passes when the answer contains the expected numbers or words, has none of the rejected ones (such as an
+invented figure), and Claude called one of the expected tools. Claude Code also loads your user-level settings (and any global CLAUDE.md), so run this in a
 plain setup.
 
 Needs the Claude Code CLI, signed in, the results from analyze.py and the .venv from requirements.txt.
@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -40,7 +41,7 @@ CASES = [
      "tools": ["get_results", "compare_funds"]},
     {"id": "three-down-days",
      "ask": "Compare the '3 down days in a row, sell on the first up day' rule across SOXL, LABU and DPST.",
-     "expect": [r"\b22(5\.5|6)\s*%", r"\b9(\.4)?\s*%", r"-\s?76(\.3)?\s*%"], "tools": ["compare_funds", "get_results"]},
+     "expect": [r"\b22(5\.5|6)\s*%", r"\+\s?9(\.4)?\s*%|\b9\.4\s*%", r"-\s?76(\.3)?\s*%"], "tools": ["compare_funds", "get_results"]},
     {"id": "best-rule-soxl",
      "ask": "Which trading rule had the highest 5-year total return on SOXL, and what was it?",
      "expect": [r"bollinger", r"\b55[78](\.9)?\s*%"], "tools": ["get_results"]},
@@ -49,14 +50,19 @@ CASES = [
      "expect": [r"soxl", r"6\s*%.{0,40}3:30|3:30.{0,40}6\s*%"], "tools": ["pattern_verdict"]},
     {"id": "how-many-tests",
      "ask": "How many pattern tests were run, how many had p below 0.05, and how many would luck alone produce?",
-     "expect": [r"\b189\b", r"\b6\b|\bsix\b", r"\b9\.5\b"], "tools": ["pattern_verdict"]},
+     # The 6 must sit near "p below 0.05", and not be part of "6%+" or a date such as "Oct 6,".
+     "expect": [r"\b189\b", r"\b9\.5\b",
+                r"\b(6|six)\b(?![%+.,:\d]).{0,60}(0?\.05|p\s*<|below|under)|(0?\.05|p\s*<).{0,60}\b(6|six)\b(?![%+.,:\d])"],
+     "tools": ["pattern_verdict"]},
     {"id": "fomc-soxl",
      "ask": "Is there a real FOMC-day effect on SOXL? Give the p-value.",
      "expect": [r"\b0?\.08\b|\b0?\.080\d?\b", r"no (real |reliable |statistical |significant )*(evidence|effect)|not (statistically )?significant|"
                                                r"isn'?t (real|significant)|not real|doesn'?t hold"], "tools": ["pattern_verdict"]},
     {"id": "unknown-fund",
      "ask": "What did the RSI(2) dip rule return on TQQQ?",
-     "expect": [r"tqqq", r"\bonly\b|not (covered|included|part of|tested)|doesn'?t (cover|include)|wasn'?t (covered|included|tested)"],
+     "expect": [r"tqqq", r"\b(only|just) (covers?|tested|includes?|three)|not (covered|included|part of|tested)|"
+                        r"(wasn'?t|isn'?t|was never|never) (covered|included|tested|part)|doesn'?t (cover|include)|no tqqq"],
+     "reject": [r"tqqq[^.\n|]{0,40}[-+]?\d+(\.\d+)?\s*%"],  # a figure right after TQQQ is an invented one
      "tools": ["get_results", "compare_funds"]},
 ]
 
@@ -99,6 +105,24 @@ def grade(case, run):
         problems.append(f"expected a call to {' or '.join(case['tools'])}, got {used or 'none'}")
     answer = normalize(run["answer"])
     problems += [f"answer lacks /{pattern}/" for pattern in case["expect"] if not re.search(pattern, answer)]
+    problems += [f"answer has /{pattern}/" for pattern in case.get("reject", []) if re.search(pattern, answer)]
+    return problems
+
+
+def preflight():
+    """Why the eval can't run, found before any request is paid for: an empty list when it can."""
+    problems = []
+    if not shutil.which("claude"):
+        problems.append("The claude CLI isn't on PATH.")
+    command = json.loads((ROOT / ".mcp.json").read_text())["mcpServers"][SERVER]["command"]
+    if not (ROOT / command).exists():
+        problems.append(f"{command} is missing: create .venv and install requirements.txt (see the README).")
+    sys.path.insert(0, str(ROOT / "mcp_server"))
+    import results
+    try:
+        results.load()
+    except results.ResultsError as e:
+        problems.append(str(e))
     return problems
 
 
@@ -139,6 +163,9 @@ def main(argv=None):
     cases = [c for c in CASES if not args.only or c["id"] in args.only]
     if not cases:
         sys.exit(f"No case matches {args.only}. The ids are: {', '.join(c['id'] for c in CASES)}")
+    problems = preflight()
+    if problems:
+        sys.exit("Not running the eval:\n  " + "\n  ".join(problems))
     with tempfile.TemporaryDirectory() as folder:
         config = mcp_config(folder)
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
