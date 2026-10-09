@@ -2,6 +2,10 @@
 
 Dates are when the work happened. This repo was created on 2026-10-07 from a private working repo, so its git history starts on that day; earlier work is recorded here instead of in backdated commits.
 
+## 2026-10-09
+
+- **Branch protection on `main`** ([#5](https://github.com/rjtenyks/leveraged-etf-retest/issues/5)): a change can only reach `main` through a pull request, after both `unittest` checks pass and with the branch up to date. It applies to admins too, and `main` can't be force-pushed or deleted. The code review of #4 pointed out that the README said "CI must pass" while nothing enforced it.
+
 ## 2026-10-08
 
 - **Claude Code hook** ([#3](https://github.com/rjtenyks/leveraged-etf-retest/issues/3)): after Claude edits the analysis, the thinkScript files or the tests, a project hook runs the unit tests and returns any failures to Claude. After an edit to the analysis, it also runs a new reproducibility check (`check_reproducible.py`: rerun in a fresh folder, byte-compare the results and the chart) and flags changed numbers. The hook and the check have their own tests. The code review of the pull request found 14 issues. 13 were fixed: among them, a hang in the tests crashed the hook instead of stopping Claude, and a hook run took about 9 s (now about 4 s). The reason for leaving the last one is posted on the pull request.

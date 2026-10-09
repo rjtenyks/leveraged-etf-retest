@@ -14,6 +14,7 @@ A 5-year retest of a SOXL · LABU · DPST pattern study, and the thinkorswim cod
 - Numbers in README.md, notes and the thinkScript labels must come from `data/soxl-labu-dpst/results_5y.json`. When the analysis changes, rerun it, regenerate the chart, and update all three.
 - A thinkScript rule change must still give the same trades as `analyze.py`. Check it before committing.
 - Nothing personal in tracked files or images: no account numbers, balances, positions, names, emails, hostnames or locations. Check screenshots (pixels and metadata) before adding them.
+- `main` is protected: every change goes through a pull request, and both `unittest` checks must pass before it can merge. Never push to `main`.
 - Tests must pass before a commit. A change to the statistics, the simulator or the chart gets a test.
 - Record dated changes in CHANGELOG.md. Never backdate commits.
 - Results are historical analysis, not advice. Keep the disclaimer.
