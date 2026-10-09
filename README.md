@@ -58,7 +58,7 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
 5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results.
-6. **Tested on every change.** Unit tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against a five-day example worked out by hand, the chart script, and the thinkScript headers. GitHub Actions runs them on every pull request. They don't need the downloaded prices.
+6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, and the thinkScript headers. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -118,6 +118,8 @@ python3 backtests/soxl-labu-dpst/analyze.py        # all tests and backtests -> 
 python3 backtests/soxl-labu-dpst/make_chart.py     # the chart above -> docs/images/soxl-growth-5y.svg
 python3 -m unittest discover -s tests             # the unit tests (no prices needed)
 ```
+
+On Windows, Python has no built-in time-zone database, so run `pip install tzdata` first ([Python docs](https://docs.python.org/3/library/zoneinfo.html#data-sources)). Linux and macOS need nothing extra.
 
 Yahoo only serves recent hourly bars, so a fresh download covers a later window and gives slightly different numbers from the ones above.
 
