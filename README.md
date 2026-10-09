@@ -13,6 +13,7 @@ I built it with Claude Code. The code, the models and every number below came ou
 - **A question answered with data, including the answers that were no.** Most of the patterns failed the five-year test. The README says so up front.
 - **Verification at every step.** Statistics were checked against textbook values. The trading rules were written twice, independently, and both versions gave identical trades. Then thinkorswim's own backtest gave the same 57 trades at the same prices.
 - **Shipped into a real tool and fixed from real use.** The models run inside thinkorswim on a Windows PC. Testing them there led to four fixes. Those, and the other problems found along the way, are in [What broke and how we fixed it](#what-broke-and-how-we-fixed-it).
+- **The results, as tools an AI can use.** A small MCP server answers questions from the saved results, and a mini eval checks Claude's answers against the published numbers. See [Ask the results (MCP server)](#ask-the-results-mcp-server).
 - **Hands-on agentic engineering.** This covers how the work was planned and checked, the guardrails used, and moving work between three machines. See [How it was built with Claude Code](#how-it-was-built-with-claude-code).
 
 ## The question
@@ -58,7 +59,7 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
 5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results, and redrawing the chart gives the committed image. [`check_reproducible.py`](backtests/soxl-labu-dpst/check_reproducible.py) checks both.
-6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, the thinkScript headers, the reproducibility check and the Claude Code hook. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on Python 3.12 and 3.14 for every pull request and every push to `main`, a pull request can't be merged until they pass, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files, the tests or the hook. They don't need the downloaded prices.
+6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, the thinkScript headers, the reproducibility check, the Claude Code hook, the MCP server and the eval's grading. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on Python 3.12 and 3.14 for every pull request and every push to `main`, a pull request can't be merged until they pass, and a Claude Code hook runs them after Claude edits the code. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -101,7 +102,7 @@ The strategy replayed on SOXL, five years of daily candles:
   - Screenshots were checked for account numbers and file metadata before they went into the repo.
   - A standing rule: no passwords, card numbers, keys or account numbers in anything shared, without my explicit approval.
 - **A project hook that runs the tests.**
-  - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files, the tests or the hook itself, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests. If they fail or hang, the hook hands that back to Claude, which fixes it before moving on.
+  - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files, the tests, the MCP server, the eval or the hook itself, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests. If they fail or hang, the hook hands that back to Claude, which fixes it before moving on.
   - After an edit to the analysis, it also reruns the reproducibility check on the downloaded prices. A crash there stops Claude the same way. When the numbers change, it tells Claude, because the README, the notes and the thinkScript labels then need updating too.
   - It's committed with the repo, so it works for anyone who opens the project in Claude Code. The hook has its own tests.
 - **Issues, pull requests and review.** Starting with the unit tests ([#1](https://github.com/rjtenyks/leveraged-etf-retest/issues/1)), each change is a GitHub issue and a pull request. Branch protection on `main` enforces part of this: a change can only arrive through a pull request that is up to date with `main`, and only after the unit tests pass on every Python version CI runs. While protection is on, it holds for me as the admin too. Its settings are in [`.github/branch-protection.json`](.github/branch-protection.json). GitHub can't tell whether a pull request weakened the tests or the workflow that runs them, so the review covers that: Claude Code's `/code-review` reviews each pull request before I merge it, and its findings, and what was done about each, are posted on the pull request.
@@ -109,13 +110,30 @@ The strategy replayed on SOXL, five years of daily candles:
 - **Connectors (MCP).**
   - Google Drive moved files from the PC to the laptop early on.
   - Alpha Vantage was checked as a source of intraday history, which is where the paid-data limit showed up.
+  - This repo has its own MCP server, for the results (next section).
 - **claude.ai pages with runtime capabilities.**
   - The interactive results page has per-fund charts and Copy and Download buttons for the code.
   - A private "handoff" page has a small shared database, a file store and downloads, so notes, code and screenshots move between the laptop, the PC and the phone. The screenshots in this README arrived that way.
 
+## Ask the results (MCP server)
+
+[`mcp_server/`](mcp_server/) is a small, read-only [MCP](https://modelcontextprotocol.io) server. With it, Claude, or any MCP client, answers questions about this retest from the saved results instead of from memory.
+
+| Tool | What it answers |
+|---|---|
+| `get_results(fund)` | Every trading rule on SOXL, LABU or DPST, best first: total return, each year's return, worst drawdown, trades, win rate |
+| `compare_funds(rule)` | One rule on all three funds, side by side. Rule names are matched loosely: "RSI(2)", "bollinger", "3 down days" |
+| `pattern_verdict(query, fund)` | Any of the 189 pattern tests, with its p-value, its q-value after the false-discovery check, and a verdict: held up, probably luck, or no evidence |
+
+- **Design.** The answers are plain Python in [`results.py`](mcp_server/results.py), tested without the MCP package. [`server.py`](mcp_server/server.py) is a thin layer on top, built with the official Python SDK (`mcp` 2.3.0). A question it can't answer, such as an untested fund or a missing results file, comes back as a tool error that says what to do.
+- **Tests.** The answers are tested on a hand-made results file with values right at the cutoffs. The server is tested end to end over the MCP protocol, including starting it from the command in [`.mcp.json`](.mcp.json), as Claude Code does. CI installs the packages from [`requirements.txt`](requirements.txt), each pinned with its hash.
+- **Mini eval.** [`evals/run_evals.py`](evals/run_evals.py) asks Claude eight questions with known answers through `claude -p`. It runs from an empty folder, with Claude Code's own tools turned off and only this server available. Each answer must contain the published numbers and no invented ones, and Claude must have called a fitting tool. Nothing runs, and nothing is paid for, unless the `claude` CLI, `.venv` and current results are all in place. The first run scored 7 of 8. The miss was the grader's: Claude wrote "lost 76.8%", and the check only accepted "−76.8%". With that fixed: 8 of 8, in 35 seconds.
+
+To use it in Claude Code, set up the environment once (below), start `claude` in this folder, and approve the project's MCP server when asked. On Windows, change the command in [`.mcp.json`](.mcp.json) to `.venv\Scripts\python.exe`. Then ask, for example, "Did the FOMC-day pattern hold up on SOXL?"
+
 ## Run it
 
-Python 3, standard library only. Prices are downloaded into `data/`, which is not in the repo.
+The analysis needs only Python 3's standard library. The MCP server needs the packages in `requirements.txt`. Prices are downloaded into `data/`, which is not in the repo.
 
 ```
 python3 backtests/soxl-labu-dpst/fetch_prices.py   # daily and hourly prices from Yahoo Finance
@@ -124,6 +142,17 @@ python3 backtests/soxl-labu-dpst/make_chart.py     # the chart above -> docs/ima
 python3 -m unittest discover -s tests             # the unit tests (no prices needed)
 python3 backtests/soxl-labu-dpst/check_reproducible.py   # rerun in a fresh folder, compare results and chart
 ```
+
+For the MCP server and its tests:
+
+```
+python3 -m venv .venv
+.venv/bin/pip install --require-hashes --only-binary :all: -r requirements.txt   # exactly the pinned, hashed packages
+.venv/bin/python -m unittest discover -s tests    # all the tests, the MCP server's included
+python3 evals/run_evals.py                         # the mini eval: needs Claude Code, signed in; a few cents of usage
+```
+
+`requirements.txt` is generated from `requirements.in` with `pip-compile --generate-hashes` ([pip-tools](https://github.com/jazzband/pip-tools)), so it isn't edited by hand.
 
 On Windows, Python has no built-in time-zone database, so run `pip install tzdata` first ([Python docs](https://docs.python.org/3/library/zoneinfo.html#data-sources)). Linux and macOS need nothing extra.
 
@@ -137,9 +166,13 @@ Yahoo only serves recent hourly bars, so a fresh download covers a later window 
 | `studies/soxl-labu-dpst/` | The thinkScript files and their setup notes |
 | `notes/` | The full results, pattern by pattern |
 | `docs/images/` | Screenshots and the chart |
+| `mcp_server/` | The MCP server: the answers ([`results.py`](mcp_server/results.py)) and the server ([`server.py`](mcp_server/server.py)) |
+| `evals/` | The mini eval for the MCP server |
 | `tests/` | Unit tests, standard library `unittest` |
 | `.github/` | CI that runs the tests on every pull request ([`workflows/tests.yml`](.github/workflows/tests.yml)), and the branch protection settings that block a merge until they pass ([`branch-protection.json`](.github/branch-protection.json)) |
 | `.claude/` | Claude Code project settings and the hook that runs the tests after each edit |
+| `.mcp.json` | Tells Claude Code how to start the MCP server |
+| `requirements.in`, `requirements.txt` | The MCP server's one dependency, and every package it needs, pinned with hashes |
 | [`CHANGELOG.md`](CHANGELOG.md) | What was done and when |
 
 ## Disclaimer

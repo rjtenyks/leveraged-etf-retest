@@ -575,7 +575,8 @@ def main():
     for t, qq in zip(TESTS, q):
         t.append(qq)
     results["fdr"] = dict(n_tests=len(TESTS), n_p_below_05=sum(t[3] < 0.05 for t in TESTS), expected_by_chance=round(0.05 * len(TESTS), 1),
-                          n_survive_q10=sum(t[4] < 0.10 for t in TESTS), smallest=sorted(([t[0], t[2], round(t[3], 4), round(t[4], 3)] for t in TESTS), key=lambda x: x[2])[:25])
+                          n_survive_q10=sum(t[4] < 0.10 for t in TESTS), smallest=sorted(([t[0], t[2], round(t[3], 4), round(t[4], 3)] for t in TESTS), key=lambda x: x[2])[:25],
+                          tests=TESTS)  # every test: [fund, family, name, p, q], unrounded so counts match the ones above
     OUT.write_text(json.dumps(results, indent=1, default=str))
     print("saved", OUT, "|", results["fdr"]["n_tests"], "tests,", results["fdr"]["n_p_below_05"], "with p<0.05,",
           results["fdr"]["expected_by_chance"], "expected by luck,", results["fdr"]["n_survive_q10"], "survive the false-discovery check")

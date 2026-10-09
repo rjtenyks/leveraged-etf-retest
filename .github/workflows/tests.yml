@@ -1,5 +1,6 @@
 # Runs the unit tests on every pull request and on every push to main.
-# The tests use only the Python standard library and don't need the downloaded prices.
+# The tests don't need the downloaded prices. Most use only the standard library; the MCP server tests need the
+# packages in requirements.txt, installed below.
 # Branch protection (.github/branch-protection.json) requires the tests-passed job before a merge.
 # The push run re-tests what the pull request already tested; it keeps the README badge current for main.
 name: tests
@@ -27,6 +28,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
+      # The MCP server's dependencies, exactly as pinned and hashed in requirements.txt
+      - run: "python -m pip install --require-hashes --only-binary :all: -r requirements.txt"  # quoted: YAML reads ": " as a key
       - run: python -m unittest discover -s tests -v
 
   # The one check branch protection requires. Requiring this instead of each "unittest (3.x)" job lets the

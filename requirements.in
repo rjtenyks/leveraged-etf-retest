@@ -1,0 +1,3 @@
+# Top-level dependencies, for the MCP server only (the analysis needs nothing beyond the standard library).
+# requirements.txt is generated from this file; see the README.
+mcp==2.3.0
