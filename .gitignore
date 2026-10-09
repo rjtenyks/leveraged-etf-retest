@@ -4,3 +4,6 @@ __pycache__/
 
 # Personal Claude Code settings (permissions, paths); only .claude/settings.json is shared
 .claude/settings.local.json
+
+# The Python environment for the MCP server (see requirements.txt)
+.venv/
