@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from support import MCP_SERVER
+from support import ROOT
 from test_mcp_tools import FIXTURE
 
 HAVE_MCP = importlib.util.find_spec("mcp") is not None
@@ -106,13 +106,26 @@ class Installed(unittest.TestCase):
         self.assertTrue(HAVE_MCP, "CI must install requirements.txt, or the MCP server tests silently skip")
 
 
+class McpJson(unittest.TestCase):
+    def test_one_server_started_from_the_project(self):
+        servers = json.loads((ROOT / ".mcp.json").read_text())["mcpServers"]
+        self.assertEqual(list(servers), ["leveraged-etf-retest"])  # the name is in every tool's id: mcp__leveraged-etf-retest__...
+        server = servers["leveraged-etf-retest"]
+        self.assertEqual(server["command"], ".venv/bin/python")  # README: on Windows, .venv\Scripts\python.exe
+        self.assertEqual(server["args"], ["mcp_server/server.py"])
+        self.assertTrue((ROOT / server["args"][0]).is_file())
+
+
 @unittest.skipUnless(HAVE_MCP, SKIP)
 class OverStdio(WithFixture):
-    """The way Claude Code runs it (.mcp.json): server.py as its own process, talking over stdin and stdout."""
+    """The way Claude Code runs it: the command in .mcp.json, from the project folder, over stdin and stdout."""
 
     async def test_launch_list_and_call(self):
         from mcp import Client, StdioServerParameters
-        params = StdioServerParameters(command=sys.executable, args=[str(MCP_SERVER / "server.py")],
+        server = json.loads((ROOT / ".mcp.json").read_text())["mcpServers"]["leveraged-etf-retest"]
+        venv_python = ROOT / server["command"]
+        command = str(venv_python) if venv_python.exists() else sys.executable  # CI installs into its own Python, not .venv
+        params = StdioServerParameters(command=command, args=server["args"], cwd=str(ROOT),
                                        env=dict(os.environ, LETF_RESULTS=str(self.path)))
         async with Client(params, read_timeout_seconds=30) as client:
             self.assertEqual(client.server_info.name, "leveraged-etf-retest")

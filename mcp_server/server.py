@@ -18,10 +18,10 @@ READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 server = MCPServer(
     "leveraged-etf-retest",
     instructions=(
-        "Results of a 5-year retest (Oct 7, 2021 to Oct 6, 2026) of trading rules and patterns on three 3x "
-        "leveraged ETFs: SOXL (semiconductors), LABU (biotech) and DPST (regional banks). Returns are percent, "
-        "after 0.05% cost per side, trading at the close. Quote the numbers the tools return instead of "
-        "estimating. This is historical analysis, not investment advice."
+        "Results of a 5-year retest of trading rules and patterns on three 3x leveraged ETFs: SOXL "
+        "(semiconductors), LABU (biotech) and DPST (regional banks). The tools give the exact window. Returns "
+        "are percent; each rule says how it trades and what it costs. Quote the numbers the tools return "
+        "instead of estimating. This is historical analysis, not investment advice."
     ),
 )
 
@@ -40,9 +40,9 @@ def answer(question, *args):
 def get_results(fund: str) -> dict[str, Any]:
     """Every trading rule tested on one fund (SOXL, LABU or DPST), best 5-year total return first.
 
-    For each rule: total return, CAGR, worst drawdown, the return in each of the five 12-month years
-    (October to October) and how many were up, trades, win rate, average trade, time in the market, and
-    any trade still open at the end. Buy & hold is included for comparison.
+    For each rule: how it trades and its costs, total return, CAGR, worst drawdown, the return in each
+    12-month year (October to October) and how many were up, trades, win rate, average trade, time in the
+    market, and any trade still open at the end. Buy & hold is included for comparison.
     """
     return answer(results.get_results, fund)
 
@@ -52,21 +52,22 @@ def compare_funds(rule: str) -> dict[str, Any]:
     """One trading rule on all three funds, side by side.
 
     `rule` is matched loosely against the rule names, for example "RSI(2)", "Bollinger", "3 down days",
-    "Tuesday" or "buy and hold", and every matching rule is returned. An unknown rule returns the list
-    of rule names.
+    "Tuesday" or "buy and hold". Every matching rule is returned, closest first; check the rule names.
+    An unknown rule returns the list of rule names.
     """
     return answer(results.compare_funds, rule)
 
 
 @server.tool(annotations=READ_ONLY)
 def pattern_verdict(query: str = "", fund: str | None = None) -> dict[str, Any]:
-    """Did a pattern hold up? Searches the 189 pattern tests by name, smallest p-value first.
+    """Did a pattern hold up? Searches all the pattern tests by name, smallest p-value first.
 
     The tests cover signals (such as "RSI(2) below 10" or "after a 2-sigma drop"), weekdays, FOMC days,
     calendar effects, VIX levels, opening gaps and the last 30 minutes. Each match has its p-value, its
-    q-value after the Benjamini-Hochberg false-discovery check across all 189 tests, and a verdict:
-    "held up" (q < 0.10), "probably luck" (p < 0.05 on its own) or "no evidence". Leave `query` empty to
-    list the strongest results; set `fund` to SOXL, LABU or DPST to narrow the search.
+    q-value after the Benjamini-Hochberg false-discovery check across all the tests, and a verdict:
+    "held up" (q < 0.10), "probably luck" (p < 0.05 on its own) or "no evidence". The summary counts the
+    tests in scope. Leave `query` empty to list the strongest results; set `fund` to SOXL, LABU or DPST
+    to narrow the search.
     """
     return answer(results.pattern_verdict, query, fund)
 

@@ -2,7 +2,7 @@
 
 Claude Code runs this after every Edit or Write (see .claude/settings.json) and passes the tool call
 as JSON on stdin. If the edited file is under backtests/, studies/, tests/, mcp_server/, evals/ or
-.claude/, the unit tests run, with the project's .venv Python when there is one, so the MCP server tests
+.claude/, or is .mcp.json or a requirements file, the unit tests run, with the project's .venv Python when there is one, so the MCP server tests
 run too. When they fail or hang, the hook prints {"decision": "block", "reason": ...}, and Claude Code
 shows that to Claude. The edit itself stays; Claude sees what broke and fixes it.
 
@@ -20,7 +20,8 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR") or pathlib.Path(__file__).resolve().parents[2]).resolve()
-WATCHED = ("backtests", "studies", "tests", "mcp_server", "evals", ".claude")
+WATCHED = ("backtests", "studies", "tests", "mcp_server", "evals", ".claude")  # folders
+WATCHED_FILES = (".mcp.json", "requirements.in", "requirements.txt")
 CHECK = ROOT / "backtests" / "soxl-labu-dpst" / "check_reproducible.py"
 # Time limits in seconds. Together they stay under the hook's 120 s timeout in .claude/settings.json.
 TEST_TIMEOUT = float(os.environ.get("RUN_TESTS_TIMEOUT", 50))  # tests/test_hook.py lowers it
@@ -90,7 +91,7 @@ def main():
     except ValueError:
         return 0  # not a tool call we understand; never get in the way
     rel = edited_file(event)
-    if rel is None or not rel.parts or rel.parts[0] not in WATCHED:
+    if rel is None or not rel.parts or (rel.parts[0] not in WATCHED and rel.as_posix() not in WATCHED_FILES):
         return 0
     clear_bytecode()
     code, out = run(TEST_TIMEOUT, "-m", "unittest", "discover", "-s", "tests")

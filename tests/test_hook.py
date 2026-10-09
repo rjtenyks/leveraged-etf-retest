@@ -45,7 +45,7 @@ class Hook(unittest.TestCase):
         self.assertIn("FAILED", out["reason"])
 
     def test_every_watched_folder(self):
-        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py", "mcp_server/server.py", "evals/run_evals.py",
+        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py", "mcp_server/server.py", "evals/run_evals.py", ".mcp.json", "requirements.txt",
                      ".claude/hooks/run_tests.py", ".claude/settings.json"):
             with self.subTest(path):
                 self.assertEqual(self.edit(path, tool="Write")[1]["decision"], "block")
