@@ -5,9 +5,10 @@ as JSON on stdin. If the edited file is under backtests/, studies/, tests/ or .c
 run. When they fail or hang, the hook prints {"decision": "block", "reason": ...}, and Claude Code shows
 that to Claude. The edit itself stays; Claude sees what broke and fixes it.
 
-After an edit under backtests/, if the downloaded prices are here, it also runs check_reproducible.py
-and tells Claude when the results or the chart no longer match: the README, the notes and the
-thinkScript labels must then be updated (see CLAUDE.md). Edits anywhere else are ignored.
+After an edit under backtests/, it also runs check_reproducible.py, which needs the downloaded prices
+and saved results (it skips without them). If the full analysis crashes or hangs, that blocks too. If
+the results or the chart no longer match, Claude is told: the README, the notes and the thinkScript
+labels must then be updated (see CLAUDE.md). Edits anywhere else are ignored.
 Uses only the Python standard library.
 """
 import json
@@ -19,7 +20,6 @@ import tempfile
 
 ROOT = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR") or pathlib.Path(__file__).resolve().parents[2]).resolve()
 WATCHED = ("backtests", "studies", "tests", ".claude")
-RAW = ROOT / "data" / "soxl-labu-dpst" / "raw"
 CHECK = ROOT / "backtests" / "soxl-labu-dpst" / "check_reproducible.py"
 # Time limits in seconds. Together they stay under the hook's 120 s timeout in .claude/settings.json.
 TEST_TIMEOUT = int(os.environ.get("RUN_TESTS_TIMEOUT", 50))  # tests/test_hook.py lowers it
@@ -83,9 +83,12 @@ def main():
               "Look for an endless loop.")
     elif code:
         block(f"The unit tests fail after this edit to {rel.as_posix()}:\n\n{clip(out)}")
-    elif rel.parts[0] == "backtests" and RAW.is_dir() and CHECK.exists():
-        code, out = run(CHECK_TIMEOUT, str(CHECK))
-        if code:
+    elif rel.parts[0] == "backtests" and CHECK.exists():
+        code, out = run(CHECK_TIMEOUT, str(CHECK))  # exit 0 = reproducible, 2 = no prices to check against
+        if code is None or code == 3:
+            out = out or f"check_reproducible.py didn't finish within {CHECK_TIMEOUT} s."
+            block(f"The unit tests pass, but the full analysis fails after this edit to {rel.as_posix()}:\n\n{clip(out)}")
+        elif code == 1:
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": clip(out)}}))
     return 0
 

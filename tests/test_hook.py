@@ -58,6 +58,38 @@ class Hook(unittest.TestCase):
             with self.subTest(path):
                 self.assertEqual(self.edit(path), (0, None))
 
+    def fake_check(self, code):
+        """A stand-in check_reproducible.py that prints a line and exits with `code`."""
+        check = self.project / "backtests" / "soxl-labu-dpst" / "check_reproducible.py"
+        check.parent.mkdir(parents=True, exist_ok=True)
+        check.write_text(f"print('the check says {code}')\nraise SystemExit({code})\n")
+
+    def test_changed_results_go_to_claude(self):
+        self.fake_check(1)
+        code, out = self.edit("backtests/soxl-labu-dpst/analyze.py", PASSING)
+        self.assertEqual(code, 0)
+        self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "PostToolUse")
+        self.assertIn("the check says 1", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_a_crashing_analysis_blocks(self):
+        self.fake_check(3)
+        out = self.edit("backtests/soxl-labu-dpst/analyze.py", PASSING)[1]
+        self.assertEqual(out["decision"], "block")
+        self.assertIn("the full analysis fails", out["reason"])
+        self.assertIn("the check says 3", out["reason"])
+
+    def test_silent_when_reproducible_or_nothing_to_check(self):
+        for check in (0, 2):
+            with self.subTest(check):
+                self.fake_check(check)
+                self.assertEqual(self.edit("backtests/soxl-labu-dpst/analyze.py", PASSING), (0, None))
+
+    def test_check_runs_only_after_backtests_edits(self):
+        self.fake_check(1)
+        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py"):
+            with self.subTest(path):
+                self.assertEqual(self.edit(path, PASSING), (0, None))
+
     def env(self):
         """The environment of a plain Claude Code session in the throwaway project."""
         env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPYCACHEPREFIX", "PYTHONDONTWRITEBYTECODE")}
