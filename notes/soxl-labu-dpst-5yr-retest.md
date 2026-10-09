@@ -63,7 +63,7 @@ Read with care:
 | Gap-ups keep running in the first hour | +0.87%, p=0.008 | +0.75%, up 60%, 3 of 3 years, p=0.001 | **Holds** |
 | Flat opens fade early | −0.44%, p=0.045 | −0.50%, up 45%, 3 of 3 years, p=0.002 | **Holds, stronger** |
 | Wednesdays / Tuesday-night gap | median +1.82%, gap p=0.009 | gap +0.38%, p=0.07, positive all 5 years | Weaker but consistent |
-| Day after the Fed | +2.8%, p=0.010 | +0.34%, p=0.77 (negative in 2021–2023) | Fails |
+| Day after the Fed | +2.8%, p=0.010 | +0.34%, p=0.77 (negative in the first two years, Oct 2021 – Oct 2023) | Fails |
 | Big up days give some back | −0.95% next day | +0.03% | Fails |
 | Deep pullbacks recovered | next 5 days +4.3% | 30%+ below 20-day high: +1.77% vs +0.23% | Still weak |
 | Standard oversold levels | no edge | RSI(14)<30 next day +2.5%, p=0.05, 4 of 4 years | Weak lean |
