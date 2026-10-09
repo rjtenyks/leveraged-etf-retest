@@ -34,7 +34,8 @@ def fund(base, without=()):
 FIXTURE = {
     "window": ["2021-10-07", "2026-10-06"],
     "funds": {"SOXL": dict(fund(100.0), structure={"sessions": 1254, "gaps": [{"bucket": "gap <= -5%", "n": 115, "fill_rate": 27.0}]},
-                           current={"date": "2026-10-06", "close": 164.26}),
+                           current={"date": "2026-10-06", "close": 164.26, "rsi2": 25.8, "rsi14": 55.0, "z20": 0.4,
+                                    "dd20": -6.1, "sd60": 5.2, "vix": 17.1}),
               "LABU": fund(-20.0), "DPST": fund(5.0, without=["Down >=2-sigma day -> hold 3 days"])},
     "fdr": {"n_tests": 8, "n_p_below_05": 3, "expected_by_chance": 0.4, "n_survive_q10": 2, "tests": [
         ["SOXL", "fed", "Day after FOMC", 0.9, 0.9],
@@ -62,7 +63,7 @@ class Tools(unittest.TestCase):
     def test_get_results_ranks_the_rules(self):
         out = results.get_results(" soxl ")
         self.assertEqual(out["fund"], "SOXL")
-        self.assertEqual(out["window"], {"start": "2021-10-07", "end": "2026-10-06"})
+        self.assertEqual((out["window"]["start"], out["window"]["end"]), ("2021-10-07", "2026-10-06"))
         self.assertEqual([r["total_return_pct"] for r in out["rules"]], [200.0, 150.0, 105.0, 100.0, 90.0])
         self.assertEqual(out["rules"][0]["rule"], "3 down days -> exit first up day")
         self.assertNotIn("curve", out["rules"][0])
@@ -130,13 +131,23 @@ class Tools(unittest.TestCase):
             with self.subTest(query):
                 self.assertEqual([m["pattern"] for m in results.pattern_verdict(query)["matches"]], want)
 
+    def test_what_years_mean_goes_with_every_answer(self):
+        # Haiku read "2021-2023" as calendar years; the yearly values are Oct 7 to Oct 6.
+        for out in (results.get_results("SOXL"), results.compare_funds("hold"), results.get_section("SOXL", "current")):
+            self.assertIn("year 1 runs 2021-10-07 to 2022-10-06", out["window"]["years"])
+        self.assertIn('"Y3": [average %, days]', results.SECTIONS["intraday"]["last30"])
+
     def test_get_section_with_its_glossary(self):
-        out = results.get_section(" soxl ", " Structure ")
-        self.assertEqual((out["fund"], out["section"]), ("SOXL", "structure"))
-        self.assertEqual(out["data"]["gaps"][0]["fill_rate"], 27.0)
-        self.assertEqual(out["fields"], results.SECTIONS["structure"])
-        self.assertIn("fill_rate", out["fields"]["gaps"])
-        self.assertEqual(out["window"], {"start": "2021-10-07", "end": "2026-10-06"})
+        out = results.get_section(" soxl ", " Current ")
+        self.assertEqual((out["fund"], out["section"]), ("SOXL", "current"))
+        self.assertEqual(out["data"]["rsi2"], 25.8)
+        self.assertEqual(out["fields"], results.SECTIONS["current"])
+        self.assertEqual(out["window"]["start"], "2021-10-07")
+
+    def test_a_section_from_an_older_analyze_py(self):
+        # The fixture's structure section has only sessions and gaps: like a file written before newer fields.
+        with self.assertRaisesRegex(ResultsError, "older than this code: SOXL's structure section lacks .*largest_up.*analyze.py"):
+            results.get_section("SOXL", "structure")
 
     def test_unknown_or_missing_section(self):
         for section in ("backtests", "moon", ""):
@@ -238,18 +249,30 @@ class RealResults(unittest.TestCase):
                     self.assertTrue(cost in terms or "no costs" in terms, terms)
 
     def test_every_field_is_explained(self):
-        """analyze.py can't add a field the glossary doesn't explain: the model would have to guess what it means."""
+        """analyze.py can't add a field the glossary doesn't explain, at any depth: the model would have to guess what it
+        means. And every field the glossary explains is in the results (get_section checks the top level)."""
         labels = {"name", "day", "bucket", "vix", "at_330"}  # a row's own name, not a number
+
+        def keys(value):
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    yield k
+                    yield from keys(v)
+            elif isinstance(value, list):
+                for v in value:
+                    yield from keys(v)
+
         for fund, data in results.load()["funds"].items():
             for section, glossary in results.SECTIONS.items():
                 value = data[section]
-                fields = set(value) if isinstance(value, dict) else {"rows"}
-                rows = value if isinstance(value, list) else [r for k in ("rows", "gaps", "last30", "gap_patterns") for r in value.get(k, [])]
+                top = set(value) if isinstance(value, dict) else {"rows"}
+                explained = {k for key in glossary for k in key.split(", ")}
                 text = " ".join(glossary.values())
                 with self.subTest(fund=fund, section=section):
-                    self.assertLessEqual(fields, {k for key in glossary for k in key.split(", ")}, "explain it in results.SECTIONS")
-                    unexplained = {f for row in rows for f in row} - labels
-                    self.assertEqual(sorted(f for f in unexplained if not re.search(rf"\b{f}\b", text)), [])
+                    self.assertLessEqual(top, explained, "explain it in results.SECTIONS")
+                    nested = set(keys(value)) - top - explained - labels
+                    self.assertEqual(sorted(k for k in nested if not re.search(rf"\b{re.escape(k)}\b", text)), [])
+                    results.get_section(fund, section)  # raises if an explained field is missing
 
     def test_weekday_names(self):
         found = [m["pattern"] for m in results.pattern_verdict("Monday", "SOXL")["matches"]]

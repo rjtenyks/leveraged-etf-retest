@@ -74,7 +74,7 @@ class InProcess(WithFixture):
                  ("compare_funds", {"rule": "3 down days"}, lambda: results.compare_funds("3 down days")),
                  ("pattern_verdict", {"query": "fomc", "fund": "SOXL"}, lambda: results.pattern_verdict("fomc", "SOXL")),
                  ("pattern_verdict", {}, lambda: results.pattern_verdict()),
-                 ("get_section", {"fund": "SOXL", "section": "structure"}, lambda: results.get_section("SOXL", "structure")))
+                 ("get_section", {"fund": "SOXL", "section": "current"}, lambda: results.get_section("SOXL", "current")))
         async with self.connect() as client:
             for tool, args, direct in cases:
                 with self.subTest(tool=tool, args=args):

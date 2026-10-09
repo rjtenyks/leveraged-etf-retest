@@ -6,6 +6,7 @@ dicts, ready to send as JSON. Returns are percent. A question the results can't 
 ResultsError, with a message written for whoever asked: a person or a model.
 Uses only the Python standard library.
 """
+import datetime as dt
 import json
 import os
 import pathlib
@@ -41,8 +42,8 @@ TERMS = {
 
 
 # What the fields in each section of a fund's results mean (from analyze.py). Returns and moves are percent.
-# Daily "years" lists are the five 12-month years, Oct 7 to Oct 6 (year 1 starts Oct 7, 2021). Hourly data
-# covers years 3 to 5 only, as {"Y3": [average %, days], ...}.
+# What "years" means goes out with every answer, in the window (see window()).
+HOURLY_YEARS = 'years 3 to 5 only (the hourly data starts in year 3), as {"Y3": [average %, days], "Y4": ..., "Y5": ...}'
 SECTIONS = {
     "structure": {
         "sessions": "trading days in the window",
@@ -95,9 +96,9 @@ SECTIONS = {
         "low_hour_up_days, low_hour_worst10": "% of up days, and of the worst 10% of days, whose low came in each hourly "
                                               "bar: 9:30-10:30, 10:30-11:30, 11:30-12:30, 12:30-1:30, 1:30-2:30, 2:30-3:30, 3:30-4:00",
         "last30": "by where the day stood at 3:30 vs the prior close: n, last30 = average % move 3:30-4:00, fell = % of days "
-                  "it fell, p, years, next_gap = average % gap the next morning",
+                  f"it fell, p, years = {HOURLY_YEARS}, next_gap = average % gap the next morning",
         "gap_patterns": "by opening gap: n, first_hour = average % 9:30-10:30, first_hour_up = % up, p_first, rest_of_day = "
-                        "average % from 10:30 to the close, rest_up = % up, p_rest, years_first, years_rest",
+                        f"average % from 10:30 to the close, rest_up = % up, p_rest, years_first and years_rest = {HOURLY_YEARS}",
     },
     "current": {
         "date, close": "the last day in the data and its close ($)",
@@ -162,7 +163,12 @@ def search(query, items, text):
 
 
 def window(data):
-    return {"start": data["window"][0], "end": data["window"][1]}
+    """The test window, and what the yearly values mean: an "Oct 2021 - Oct 2022" year, not calendar 2021."""
+    start = dt.date.fromisoformat(data["window"][0])
+    year1_end = start.replace(year=start.year + 1) - dt.timedelta(days=1)
+    return {"start": data["window"][0], "end": data["window"][1],
+            "years": f"Yearly values are for 12-month years, not calendar years: year 1 runs {start} to {year1_end}, and "
+                     "each later year starts on the same date. The first value in a list of years is year 1."}
 
 
 def rule_summary(name, bt):
@@ -216,6 +222,11 @@ def get_section(fund, section):
                            "Trading rules are in get_results, and pattern p- and q-values in pattern_verdict.")
     if name not in data["funds"][fund]:
         raise ResultsError(f"{fund} has no {name} section in {RESULTS}. {RERUN}")
+    section_data = data["funds"][fund][name]
+    if isinstance(section_data, dict):  # a file from an older analyze.py lacks the newer fields
+        missing = sorted({k for key in SECTIONS[name] for k in key.split(", ")} - set(section_data))
+        if missing:
+            raise ResultsError(f"{RESULTS} is older than this code: {fund}'s {name} section lacks {', '.join(missing)}. {RERUN}")
     return {"fund": fund, "section": name, "window": window(data), "fields": SECTIONS[name], "data": data["funds"][fund][name]}
 
 
