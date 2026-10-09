@@ -13,7 +13,9 @@ permissions:
 jobs:
   unittest:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
+      fail-fast: false  # finish every version, to see whether a failure is version-specific
       matrix:
         python-version: ["3.12", "3.14"]
     steps:
