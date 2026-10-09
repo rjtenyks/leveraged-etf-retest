@@ -45,7 +45,7 @@ class Hook(unittest.TestCase):
         self.assertIn("FAILED", out["reason"])
 
     def test_every_watched_folder(self):
-        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py",
+        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py", "mcp_server/server.py",
                      ".claude/hooks/run_tests.py", ".claude/settings.json"):
             with self.subTest(path):
                 self.assertEqual(self.edit(path, tool="Write")[1]["decision"], "block")
@@ -108,6 +108,16 @@ class Hook(unittest.TestCase):
         out = self.edit("tests/calc.py", test)[1]
         self.assertIsNotNone(out, "the hook ran the stale cached code (VALUE = 1) instead of the edit")
         self.assertEqual(out["decision"], "block")
+
+    def test_uses_the_project_venv(self):
+        def runs_with(python):
+            return ("import sys\nimport unittest\n\nclass T(unittest.TestCase):\n    def test_python(self):\n"
+                    f"        self.assertEqual(sys.executable, {str(python)!r})\n")
+        self.assertEqual(self.edit("tests/test_tiny.py", runs_with(sys.executable)), (0, None))  # no .venv: the hook's own Python
+        venv_python = self.project / ".venv" / "bin" / "python"
+        venv_python.parent.mkdir(parents=True)
+        venv_python.symlink_to(sys.executable)  # stands in for a real venv; sys.executable reports the link
+        self.assertEqual(self.edit("tests/test_tiny.py", runs_with(venv_python)), (0, None))
 
     def test_endless_loop_blocks(self):
         hang = "import time\nimport unittest\n\nclass T(unittest.TestCase):\n    def test_hang(self):\n        time.sleep(30)\n"
