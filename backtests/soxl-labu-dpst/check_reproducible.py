@@ -21,7 +21,7 @@ import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-TIMEOUT = int(os.environ.get("CHECK_REPRODUCIBLE_TIMEOUT", 25))  # seconds per script; tests lower it
+TIMEOUT = float(os.environ.get("CHECK_REPRODUCIBLE_TIMEOUT", 25))  # seconds per script; tests lower it
 
 
 class Failed(Exception):
@@ -33,7 +33,7 @@ def run(script, cwd):
         p = subprocess.run([sys.executable, str(HERE / script)], cwd=cwd, capture_output=True, text=True,
                            timeout=TIMEOUT)
     except subprocess.TimeoutExpired:
-        raise Failed(f"{script} didn't finish within {TIMEOUT} s.") from None
+        raise Failed(f"{script} didn't finish within {TIMEOUT:g} s.") from None
     if p.returncode:
         raise Failed(f"{script} failed:\n{p.stderr}")
 

@@ -95,9 +95,9 @@ class CheckReproducible(unittest.TestCase):
 
     def test_analysis_hangs(self):
         (self.raw / "prices.txt").write_text("hang")
-        code, out = self.check(CHECK_REPRODUCIBLE_TIMEOUT="1")
+        code, out = self.check(CHECK_REPRODUCIBLE_TIMEOUT="0.3")
         self.assertEqual(code, 3)
-        self.assertIn("analyze.py didn't finish within 1 s", out)
+        self.assertIn("analyze.py didn't finish within 0.3 s", out)
 
     def test_broken_script(self):
         (self.project / "backtests" / "soxl-labu-dpst" / "analyze.py").write_text("def broken(:\n")

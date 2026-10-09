@@ -111,10 +111,10 @@ class Hook(unittest.TestCase):
 
     def test_endless_loop_blocks(self):
         hang = "import time\nimport unittest\n\nclass T(unittest.TestCase):\n    def test_hang(self):\n        time.sleep(30)\n"
-        code, out = self.edit("backtests/soxl-labu-dpst/analyze.py", hang, RUN_TESTS_TIMEOUT="1")
+        code, out = self.edit("backtests/soxl-labu-dpst/analyze.py", hang, RUN_TESTS_TIMEOUT="0.3")
         self.assertEqual(code, 0)
         self.assertEqual(out["decision"], "block")
-        self.assertIn("didn't finish within 1 s", out["reason"])
+        self.assertIn("didn't finish within 0.3 s", out["reason"])
 
     def test_long_output_keeps_the_first_failure(self):
         many = "import unittest\n\nclass T(unittest.TestCase):\n" + "".join(

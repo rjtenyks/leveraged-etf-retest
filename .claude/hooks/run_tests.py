@@ -14,15 +14,15 @@ Uses only the Python standard library.
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
-import tempfile
 
 ROOT = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR") or pathlib.Path(__file__).resolve().parents[2]).resolve()
 WATCHED = ("backtests", "studies", "tests", ".claude")
 CHECK = ROOT / "backtests" / "soxl-labu-dpst" / "check_reproducible.py"
 # Time limits in seconds. Together they stay under the hook's 120 s timeout in .claude/settings.json.
-TEST_TIMEOUT = int(os.environ.get("RUN_TESTS_TIMEOUT", 50))  # tests/test_hook.py lowers it
+TEST_TIMEOUT = float(os.environ.get("RUN_TESTS_TIMEOUT", 50))  # tests/test_hook.py lowers it
 CHECK_TIMEOUT = 60
 HEAD, TAIL = 2500, 1500  # characters of output passed to Claude: the first failures, then the summary
 
@@ -52,16 +52,22 @@ def clip(text):
     return f"{text[:HEAD]}\n\n[... {len(text) - HEAD - TAIL} characters cut ...]\n\n{text[-TAIL:]}"
 
 
+def clear_bytecode():
+    """Delete the project's cached bytecode. Python reuses a cached .pyc when the source has the same size
+    and timestamp, so a quick same-length edit (0.5 -> 0.4) could otherwise test the old code. The standard
+    library's cache stays, which keeps each run fast."""
+    for folder in WATCHED:
+        for cache in (ROOT / folder).glob("**/__pycache__"):
+            shutil.rmtree(cache, ignore_errors=True)
+
+
 def run(timeout, *args):
     """Run Python in the project; return (exit code, output), or (None, "") if it ran past the timeout."""
-    # A fresh, empty bytecode cache for each run. Python reuses a cached .pyc when the source has the same
-    # size and timestamp, so a quick same-length edit (0.5 -> 0.4) could otherwise test the old code.
-    with tempfile.TemporaryDirectory() as cache:
-        try:
-            p = subprocess.run([sys.executable, *args], cwd=ROOT, capture_output=True, text=True, timeout=timeout,
-                               env=dict(os.environ, PYTHONPYCACHEPREFIX=cache))
-        except subprocess.TimeoutExpired:
-            return None, ""
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPYCACHEPREFIX"}  # keep bytecode in __pycache__
+    try:
+        p = subprocess.run([sys.executable, *args], cwd=ROOT, capture_output=True, text=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired:
+        return None, ""
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
@@ -77,16 +83,17 @@ def main():
     rel = edited_file(event)
     if rel is None or not rel.parts or rel.parts[0] not in WATCHED:
         return 0
+    clear_bytecode()
     code, out = run(TEST_TIMEOUT, "-m", "unittest", "discover", "-s", "tests")
     if code is None:
-        block(f"The unit tests didn't finish within {TEST_TIMEOUT} s after this edit to {rel.as_posix()}. "
+        block(f"The unit tests didn't finish within {TEST_TIMEOUT:g} s after this edit to {rel.as_posix()}. "
               "Look for an endless loop.")
     elif code:
         block(f"The unit tests fail after this edit to {rel.as_posix()}:\n\n{clip(out)}")
     elif rel.parts[0] == "backtests" and CHECK.exists():
         code, out = run(CHECK_TIMEOUT, str(CHECK))  # exit 0 = reproducible, 2 = no prices to check against
         if code is None or code == 3:
-            out = out or f"check_reproducible.py didn't finish within {CHECK_TIMEOUT} s."
+            out = out or f"check_reproducible.py didn't finish within {CHECK_TIMEOUT:g} s."
             block(f"The unit tests pass, but the full analysis fails after this edit to {rel.as_posix()}:\n\n{clip(out)}")
         elif code == 1:
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": clip(out)}}))
