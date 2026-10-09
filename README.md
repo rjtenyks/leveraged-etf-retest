@@ -1,5 +1,7 @@
 # Leveraged ETF retest: SOXL · LABU · DPST
 
+[![tests](https://github.com/rjtenyks/leveraged-etf-retest/actions/workflows/tests.yml/badge.svg)](https://github.com/rjtenyks/leveraged-etf-retest/actions/workflows/tests.yml)
+
 A September study found about 40 trading patterns in two years of prices for three 3x leveraged ETFs: semiconductors (SOXL), biotech (LABU) and regional banks (DPST). This project retests every one of them over five years, keeps the few that held up, and turns those into thinkorswim studies, a strategy and a watchlist column. They were loaded into thinkorswim and gave the backtest's numbers.
 
 I built it with Claude Code. The code, the models and every number below came out of that collaboration, and each step was checked before the next one started.
@@ -56,6 +58,7 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
 5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results.
+6. **Tested on every change.** Unit tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against a five-day example worked out by hand, the chart script, and the thinkScript headers. GitHub Actions runs them on every pull request. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -113,6 +116,7 @@ Python 3, standard library only. Prices are downloaded into `data/`, which is no
 python3 backtests/soxl-labu-dpst/fetch_prices.py   # daily and hourly prices from Yahoo Finance
 python3 backtests/soxl-labu-dpst/analyze.py        # all tests and backtests -> data/soxl-labu-dpst/results_5y.json
 python3 backtests/soxl-labu-dpst/make_chart.py     # the chart above -> docs/images/soxl-growth-5y.svg
+python3 -m unittest discover -s tests             # the unit tests (no prices needed)
 ```
 
 Yahoo only serves recent hourly bars, so a fresh download covers a later window and gives slightly different numbers from the ones above.
@@ -125,6 +129,8 @@ Yahoo only serves recent hourly bars, so a fresh download covers a later window 
 | `studies/soxl-labu-dpst/` | The thinkScript files and their setup notes |
 | `notes/` | The full results, pattern by pattern |
 | `docs/images/` | Screenshots and the chart |
+| `tests/` | Unit tests, standard library `unittest` |
+| `.github/workflows/` | CI: runs the tests on every pull request |
 | [`CHANGELOG.md`](CHANGELOG.md) | What was done and when |
 
 ## Disclaimer
