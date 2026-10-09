@@ -58,7 +58,7 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
 5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results, and redrawing the chart gives the committed image. [`check_reproducible.py`](backtests/soxl-labu-dpst/check_reproducible.py) checks both.
-6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, the thinkScript headers, the reproducibility check and the Claude Code hook. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`, a pull request can't be merged until they pass, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files, the tests or the hook. They don't need the downloaded prices.
+6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, the thinkScript headers, the reproducibility check and the Claude Code hook. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on Python 3.12 and 3.14 for every pull request and every push to `main`, a pull request can't be merged until they pass, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files, the tests or the hook. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -104,7 +104,7 @@ The strategy replayed on SOXL, five years of daily candles:
   - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files, the tests or the hook itself, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests. If they fail or hang, the hook hands that back to Claude, which fixes it before moving on.
   - After an edit to the analysis, it also reruns the reproducibility check on the downloaded prices. A crash there stops Claude the same way. When the numbers change, it tells Claude, because the README, the notes and the thinkScript labels then need updating too.
   - It's committed with the repo, so it works for anyone who opens the project in Claude Code. The hook has its own tests.
-- **Issues, pull requests and review.** Starting with the unit tests ([#1](https://github.com/rjtenyks/leveraged-etf-retest/issues/1)), each change is a GitHub issue and a pull request. Branch protection on `main` enforces part of this, for me as the admin too: a change can only arrive through a pull request, and only after the unit tests pass on both Python versions. Claude Code's `/code-review` reviews each pull request before I merge it, and its findings, and what was done about each, are posted on the pull request.
+- **Issues, pull requests and review.** Starting with the unit tests ([#1](https://github.com/rjtenyks/leveraged-etf-retest/issues/1)), each change is a GitHub issue and a pull request. Branch protection on `main` enforces part of this: a change can only arrive through a pull request that is up to date with `main`, and only after the unit tests pass on every Python version CI runs. While protection is on, it holds for me as the admin too. Its settings are in [`.github/branch-protection.json`](.github/branch-protection.json). GitHub can't tell whether a pull request weakened the tests or the workflow that runs them, so the review covers that: Claude Code's `/code-review` reviews each pull request before I merge it, and its findings, and what was done about each, are posted on the pull request.
 - **Plan mode.** The cross-machine handoff page was planned first. I corrected the plan to add the confidential-information rule and its checks, then approved it.
 - **Connectors (MCP).**
   - Google Drive moved files from the PC to the laptop early on.
@@ -138,7 +138,7 @@ Yahoo only serves recent hourly bars, so a fresh download covers a later window 
 | `notes/` | The full results, pattern by pattern |
 | `docs/images/` | Screenshots and the chart |
 | `tests/` | Unit tests, standard library `unittest` |
-| `.github/workflows/` | CI: runs the tests on every pull request |
+| `.github/` | CI that runs the tests on every pull request ([`workflows/tests.yml`](.github/workflows/tests.yml)), and the branch protection settings that block a merge until they pass ([`branch-protection.json`](.github/branch-protection.json)) |
 | `.claude/` | Claude Code project settings and the hook that runs the tests after each edit |
 | [`CHANGELOG.md`](CHANGELOG.md) | What was done and when |
 

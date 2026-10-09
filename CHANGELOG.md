@@ -4,7 +4,7 @@ Dates are when the work happened. This repo was created on 2026-10-07 from a pri
 
 ## 2026-10-09
 
-- **Branch protection on `main`** ([#5](https://github.com/rjtenyks/leveraged-etf-retest/issues/5)): a change can only reach `main` through a pull request, after both `unittest` checks pass and with the branch up to date. It applies to admins too, and `main` can't be force-pushed or deleted. The code review of #4 pointed out that the README said "CI must pass" while nothing enforced it.
+- **Branch protection on `main`** ([#5](https://github.com/rjtenyks/leveraged-etf-retest/issues/5)): a change can only reach `main` through a pull request that is up to date with `main`, after the CI job `tests-passed` succeeds. That job passes only when the unit tests passed on every Python version in the workflow, so the versions can change without editing the protection. Admins are held to the same rules while protection is on, and `main` can't be force-pushed or deleted. The settings are in `.github/branch-protection.json`, and a test checks that they match the workflow. The code review of #4 noted that the process the README described wasn't enforced. The review of #6 found that requiring each Python version's check by name would block every pull request after a version change.
 
 ## 2026-10-08
 
