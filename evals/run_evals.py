@@ -58,6 +58,9 @@ CASES = [
      "ask": "Is there a real FOMC-day effect on SOXL? Give the p-value.",
      "expect": [r"\b0?\.08\b|\b0?\.080\d?\b", r"no (real |reliable |statistical |significant )*(evidence|effect)|not (statistically )?significant|"
                                                r"isn'?t (real|significant)|not real|doesn'?t hold"], "tools": ["pattern_verdict"]},
+    {"id": "gap-fill-soxl",
+     "ask": "On SOXL, how often did an opening gap down of 5% or more get back to the prior close the same day?",
+     "expect": [r"\b27(\.0)?\s*%"], "tools": ["get_section"]},
     {"id": "unknown-fund",
      "ask": "What did the RSI(2) dip rule return on TQQQ?",
      "expect": [r"tqqq", r"\b(only|just) (covers?|tested|includes?|three)|not (covered|included|part of|tested)|"

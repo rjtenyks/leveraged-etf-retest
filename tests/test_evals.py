@@ -108,7 +108,7 @@ class Grading(unittest.TestCase):
         ids = [c["id"] for c in run_evals.CASES]
         self.assertEqual(len(ids), len(set(ids)))
         for case in run_evals.CASES:
-            self.assertLessEqual(set(case["tools"]), {"get_results", "compare_funds", "pattern_verdict"}, case["id"])
+            self.assertLessEqual(set(case["tools"]), {"get_results", "compare_funds", "pattern_verdict", "get_section"}, case["id"])
             for pattern in case["expect"]:
                 re.compile(pattern)
 
@@ -172,6 +172,10 @@ class CasesMatchTheData(unittest.TestCase):
         fomc = results.pattern_verdict("FOMC decision day", "SOXL")["matches"][0]
         self.assertTrue(fomc["verdict"].startswith("no evidence"))
         self.expect("fomc-soxl", f"p = {fomc['p']}: no evidence")
+
+    def test_section_cases(self):
+        gaps = {g["bucket"]: g for g in results.get_section("SOXL", "structure")["data"]["gaps"]}
+        self.expect("gap-fill-soxl", f"{gaps['gap <= -5%']['fill_rate']}%")
 
 
 if __name__ == "__main__":

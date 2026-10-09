@@ -53,10 +53,10 @@ class InProcess(WithFixture):
         finally:
             sdk_log.setLevel(level)
 
-    async def test_three_read_only_tools(self):
+    async def test_four_read_only_tools(self):
         async with self.connect() as client:
             tools = {t.name: t for t in (await client.list_tools()).tools}
-        self.assertEqual(sorted(tools), ["compare_funds", "get_results", "pattern_verdict"])
+        self.assertEqual(sorted(tools), ["compare_funds", "get_results", "get_section", "pattern_verdict"])
         for t in tools.values():
             with self.subTest(t.name):
                 self.assertTrue(t.annotations.read_only_hint)
@@ -65,6 +65,7 @@ class InProcess(WithFixture):
                 self.assertEqual(t.output_schema["type"], "object")  # structured output is on
         self.assertEqual(tools["get_results"].input_schema["required"], ["fund"])
         self.assertEqual(tools["compare_funds"].input_schema["required"], ["rule"])
+        self.assertEqual(tools["get_section"].input_schema["required"], ["fund", "section"])
         self.assertNotIn("required", tools["pattern_verdict"].input_schema)  # both arguments are optional
 
     async def test_answers_match_results_py(self):
@@ -72,7 +73,8 @@ class InProcess(WithFixture):
         cases = (("get_results", {"fund": "labu"}, lambda: results.get_results("labu")),
                  ("compare_funds", {"rule": "3 down days"}, lambda: results.compare_funds("3 down days")),
                  ("pattern_verdict", {"query": "fomc", "fund": "SOXL"}, lambda: results.pattern_verdict("fomc", "SOXL")),
-                 ("pattern_verdict", {}, lambda: results.pattern_verdict()))
+                 ("pattern_verdict", {}, lambda: results.pattern_verdict()),
+                 ("get_section", {"fund": "SOXL", "section": "structure"}, lambda: results.get_section("SOXL", "structure")))
         async with self.connect() as client:
             for tool, args, direct in cases:
                 with self.subTest(tool=tool, args=args):
@@ -84,7 +86,8 @@ class InProcess(WithFixture):
     async def test_questions_it_cant_answer_are_tool_errors(self):
         cases = (("get_results", {"fund": "TQQQ"}, "Unknown fund 'TQQQ'. The retest covers SOXL, LABU, DPST only."),
                  ("compare_funds", {"rule": "moon phase"}, "No rule matches 'moon phase'. The rules are: Buy & hold;"),
-                 ("pattern_verdict", {"query": "moon"}, "No pattern test matches 'moon'."))
+                 ("pattern_verdict", {"query": "moon"}, "No pattern test matches 'moon'."),
+                 ("get_section", {"fund": "SOXL", "section": "backtests"}, "Unknown section 'backtests'. The sections are:"))
         async with self.connect() as client:
             for tool, args, message in cases:
                 with self.subTest(tool):
@@ -130,7 +133,7 @@ class OverStdio(WithFixture):
         async with Client(params, read_timeout_seconds=30) as client:
             self.assertEqual(client.server_info.name, "leveraged-etf-retest")
             self.assertIn("not investment advice", client.instructions)
-            self.assertEqual(len((await client.list_tools()).tools), 3)
+            self.assertEqual(len((await client.list_tools()).tools), 4)
             out = await client.call_tool("compare_funds", {"rule": "buy and hold"})
         self.assertFalse(out.is_error, out.content)
         self.assertEqual(out.structured_content["rules"][0]["funds"]["SOXL"]["total_return_pct"], 100.0)

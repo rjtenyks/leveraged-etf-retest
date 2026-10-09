@@ -5,6 +5,7 @@ for them. The last class checks the real results against the README, and skips w
 """
 import json
 import pathlib
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -32,7 +33,9 @@ def fund(base, without=()):
 
 FIXTURE = {
     "window": ["2021-10-07", "2026-10-06"],
-    "funds": {"SOXL": fund(100.0), "LABU": fund(-20.0), "DPST": fund(5.0, without=["Down >=2-sigma day -> hold 3 days"])},
+    "funds": {"SOXL": dict(fund(100.0), structure={"sessions": 1254, "gaps": [{"bucket": "gap <= -5%", "n": 115, "fill_rate": 27.0}]},
+                           current={"date": "2026-10-06", "close": 164.26}),
+              "LABU": fund(-20.0), "DPST": fund(5.0, without=["Down >=2-sigma day -> hold 3 days"])},
     "fdr": {"n_tests": 8, "n_p_below_05": 3, "expected_by_chance": 0.4, "n_survive_q10": 2, "tests": [
         ["SOXL", "fed", "Day after FOMC", 0.9, 0.9],
         ["LABU", "signal", "RSI(2) below 10 (next day)", 0.0499, 0.10],  # p just under 0.05, q exactly 0.10
@@ -127,6 +130,23 @@ class Tools(unittest.TestCase):
             with self.subTest(query):
                 self.assertEqual([m["pattern"] for m in results.pattern_verdict(query)["matches"]], want)
 
+    def test_get_section_with_its_glossary(self):
+        out = results.get_section(" soxl ", " Structure ")
+        self.assertEqual((out["fund"], out["section"]), ("SOXL", "structure"))
+        self.assertEqual(out["data"]["gaps"][0]["fill_rate"], 27.0)
+        self.assertEqual(out["fields"], results.SECTIONS["structure"])
+        self.assertIn("fill_rate", out["fields"]["gaps"])
+        self.assertEqual(out["window"], {"start": "2021-10-07", "end": "2026-10-06"})
+
+    def test_unknown_or_missing_section(self):
+        for section in ("backtests", "moon", ""):
+            with self.subTest(section), self.assertRaisesRegex(ResultsError, "The sections are: structure, signals.*get_results"):
+                results.get_section("SOXL", section)
+        with self.assertRaisesRegex(ResultsError, "LABU has no structure section.*analyze.py"):
+            results.get_section("LABU", "structure")
+        with self.assertRaisesRegex(ResultsError, "Unknown fund 'TQQQ'"):
+            results.get_section("TQQQ", "structure")
+
     def test_verdicts_at_the_thresholds(self):
         found = {(m["fund"], m["pattern"]): m["verdict"] for m in results.pattern_verdict("")["matches"]}
         self.assertTrue(found[("SOXL", "Up 6%+ at 3:30")].startswith("held up"))
@@ -216,6 +236,20 @@ class RealResults(unittest.TestCase):
                     self.assertIn(name, results.TERMS, "add how this rule trades to results.TERMS")
                     terms = results.TERMS[name]
                     self.assertTrue(cost in terms or "no costs" in terms, terms)
+
+    def test_every_field_is_explained(self):
+        """analyze.py can't add a field the glossary doesn't explain: the model would have to guess what it means."""
+        labels = {"name", "day", "bucket", "vix", "at_330"}  # a row's own name, not a number
+        for fund, data in results.load()["funds"].items():
+            for section, glossary in results.SECTIONS.items():
+                value = data[section]
+                fields = set(value) if isinstance(value, dict) else {"rows"}
+                rows = value if isinstance(value, list) else [r for k in ("rows", "gaps", "last30", "gap_patterns") for r in value.get(k, [])]
+                text = " ".join(glossary.values())
+                with self.subTest(fund=fund, section=section):
+                    self.assertLessEqual(fields, {k for key in glossary for k in key.split(", ")}, "explain it in results.SECTIONS")
+                    unexplained = {f for row in rows for f in row} - labels
+                    self.assertEqual(sorted(f for f in unexplained if not re.search(rf"\b{f}\b", text)), [])
 
     def test_weekday_names(self):
         found = [m["pattern"] for m in results.pattern_verdict("Monday", "SOXL")["matches"]]

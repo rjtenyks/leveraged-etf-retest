@@ -124,6 +124,7 @@ The strategy replayed on SOXL, five years of daily candles:
 | `get_results(fund)` | Every trading rule on SOXL, LABU or DPST, best first: total return, each year's return, worst drawdown, trades, win rate |
 | `compare_funds(rule)` | One rule on all three funds, side by side. Rule names are matched loosely: "RSI(2)", "bollinger", "3 down days" |
 | `pattern_verdict(query, fund)` | Any of the 189 pattern tests, with its p-value, its q-value after the false-discovery check, and a verdict: held up, probably luck, or no evidence |
+| `get_section(fund, section)` | The other numbers: price structure (biggest moves, how often opening gaps fill), signals, weekdays, FOMC and calendar days, VIX levels, time of day. Each section comes with what its fields mean |
 
 - **Design.** The answers are plain Python in [`results.py`](mcp_server/results.py), tested without the MCP package. [`server.py`](mcp_server/server.py) is a thin layer on top, built with the official Python SDK (`mcp` 2.3.0). A question it can't answer, such as an untested fund or a missing results file, comes back as a tool error that says what to do.
 - **Tests.** The answers are tested on a hand-made results file with values right at the cutoffs. The server is tested end to end over the MCP protocol, including starting it from the command in [`.mcp.json`](.mcp.json), as Claude Code does. CI installs the packages from [`requirements.txt`](requirements.txt), each pinned with its hash.

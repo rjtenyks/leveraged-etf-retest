@@ -40,6 +40,73 @@ TERMS = {
 }
 
 
+# What the fields in each section of a fund's results mean (from analyze.py). Returns and moves are percent.
+# Daily "years" lists are the five 12-month years, Oct 7 to Oct 6 (year 1 starts Oct 7, 2021). Hourly data
+# covers years 3 to 5 only, as {"Y3": [average %, days], ...}.
+SECTIONS = {
+    "structure": {
+        "sessions": "trading days in the window",
+        "start_close, end_close": "closing price ($) before the window starts and on its last day",
+        "largest_up, largest_down": "[date, % move] of the biggest one-day rise and fall",
+        "mean_abs, median_abs": "average and median size of a day's move, %",
+        "days_down_10, days_up_10": "number of days down 10% or more, and up 10% or more",
+        "pct_up": "% of days that closed up",
+        "worst_week": "[first day, % from that day's open to the week's last close] of the worst week",
+        "mean_down_week": "average % move of the weeks that fell",
+        "pct_weeks_down": "% of weeks that fell",
+        "deepest_in_week": "deepest % drop from a week's open to its lowest low",
+        "gaps": "by opening gap size: n days; fill_rate = % of them where the price got back to the prior close during the day; "
+                "intra = average % from open to close; next_day = average % the next day",
+        "two_sigma_rate": "% of days that moved more than twice the trailing 60-day standard deviation",
+        "two_sigma_after_two_sigma": "% chance of another such day right after one",
+        "n_two_sigma": "how many such days",
+        "drop_from_open_median, drop_from_open_p10": "median, and worst-10%, drop from the open to the day's low, %",
+        "week_low": "full_weeks; observed = % of full weeks whose low came Mon..Fri; chance = the same for random weeks built "
+                    "from the fund's own days; mon_or_fri, chance_mon_or_fri = % with the low on Monday or Friday; p",
+    },
+    "signals": {
+        "base1, base5": "average % return over the next day, and the next 5 days, after any day",
+        "hit1_all": "% of all days followed by an up day",
+        "rows": "one per signal: n = days it fired; d1, d5 = average % over the next day and next 5 days; hit1, hit5 = % of "
+                "those up; p1 = next day vs all other days; p5 = next 5 days (non-overlapping) vs all; years_d1 = the next-day "
+                "average in each year; same_sign_years = years whose average had the same sign as the overall one",
+    },
+    "weekday": {
+        "rows": "one per weekday: n days; mean, median = % close to close; pct_up = % up; overnight = average % gap from the "
+                "prior close to the open; intraday = average % open to close; p = vs the other days; p_gap = the gap vs "
+                "the other days' gaps; years, years_gap = the yearly averages",
+    },
+    "events": {
+        "fomc_day, fomc_next": "the FOMC decision day and the day after: n, mean %, pct_up, p, years",
+        "Turn of the month, Options-expiration Friday, Options-expiration week, Day after expiration":
+            "calendar days (turn of the month = the last day and first 3 days; expiration = the 3rd Friday): n, "
+            "mean %, rest = average % on all other days, p",
+    },
+    "vix": {
+        "rows": "one per VIX level at the close: n days; episodes = separate runs in that range; fwd5 = average % over the "
+                "next 5 days; hit = % of those up; p; years",
+    },
+    "intraday": {
+        "days, first, last": "the hourly data: full days, and its own first and last date",
+        "abs_move": "average size of the move in each part of the day: overnight, 9:30-10:30, 10:30-11:30, 11:30-12:30, "
+                    "12:30-1:30, 1:30-2:30, 2:30-3:30, 3:30-4:00",
+        "down_day_loss_share": "% of down days' total loss that came overnight, in the first hour, and in the rest of the day",
+        "low_hour_up_days, low_hour_worst10": "% of up days, and of the worst 10% of days, whose low came in each hourly "
+                                              "bar: 9:30-10:30, 10:30-11:30, 11:30-12:30, 12:30-1:30, 1:30-2:30, 2:30-3:30, 3:30-4:00",
+        "last30": "by where the day stood at 3:30 vs the prior close: n, last30 = average % move 3:30-4:00, fell = % of days "
+                  "it fell, p, years, next_gap = average % gap the next morning",
+        "gap_patterns": "by opening gap: n, first_hour = average % 9:30-10:30, first_hour_up = % up, p_first, rest_of_day = "
+                        "average % from 10:30 to the close, rest_up = % up, p_rest, years_first, years_rest",
+    },
+    "current": {
+        "date, close": "the last day in the data and its close ($)",
+        "rsi2, rsi14": "RSI(2) and RSI(14) at that close",
+        "z20": "standard deviations from the 20-day average", "dd20": "% below the 20-day high",
+        "sd60": "60-day standard deviation of daily moves, %", "vix": "the VIX close",
+    },
+}
+
+
 class ResultsError(ValueError):
     """A question the results can't answer: no usable results, or an unknown fund, rule or pattern."""
 
@@ -136,6 +203,19 @@ def compare_funds(rule):
     return {"window": window(data),
             "rules": [{"rule": name, "funds": {f: rule_summary(name, d["backtests"].get(name)) for f, d in data["funds"].items()}}
                       for name in found]}
+
+
+def get_section(fund, section):
+    """One section of a fund's results, the numbers get_results and pattern_verdict don't cover, with what its fields mean."""
+    data = load()
+    fund = fund_name(data, fund)
+    name = str(section).strip().lower()
+    if name not in SECTIONS:
+        raise ResultsError(f"Unknown section {section!r}. The sections are: {', '.join(SECTIONS)}. "
+                           "Trading rules are in get_results, and pattern p- and q-values in pattern_verdict.")
+    if name not in data["funds"][fund]:
+        raise ResultsError(f"{fund} has no {name} section in {RESULTS}. {RERUN}")
+    return {"fund": fund, "section": name, "window": window(data), "fields": SECTIONS[name], "data": data["funds"][fund][name]}
 
 
 def verdict(p, q):
