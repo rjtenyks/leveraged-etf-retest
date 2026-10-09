@@ -28,11 +28,11 @@ class Hook(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def edit(self, path, test_file=FAILING, tool="Edit"):
+    def edit(self, path, test_file=FAILING, tool="Edit", **env):
         """Run the hook as if Claude had just edited `path`; return its exit code and parsed output."""
         (self.project / "tests" / "test_tiny.py").write_text(test_file)
         event = {"tool_name": tool, "tool_input": {"file_path": str(self.project / path)}}
-        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(event), env=self.env(),
+        p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(event), env=dict(self.env(), **env),
                            capture_output=True, text=True, timeout=60)
         return p.returncode, json.loads(p.stdout) if p.stdout.strip() else None
 
@@ -45,7 +45,8 @@ class Hook(unittest.TestCase):
         self.assertIn("FAILED", out["reason"])
 
     def test_every_watched_folder(self):
-        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py"):
+        for path in ("studies/soxl-labu-dpst/LEV3X_Dip_STUDY.ts", "tests/test_statistics.py",
+                     ".claude/hooks/run_tests.py", ".claude/settings.json"):
             with self.subTest(path):
                 self.assertEqual(self.edit(path, tool="Write")[1]["decision"], "block")
 
@@ -76,9 +77,26 @@ class Hook(unittest.TestCase):
         self.assertIsNotNone(out, "the hook ran the stale cached code (VALUE = 1) instead of the edit")
         self.assertEqual(out["decision"], "block")
 
+    def test_endless_loop_blocks(self):
+        hang = "import time\nimport unittest\n\nclass T(unittest.TestCase):\n    def test_hang(self):\n        time.sleep(30)\n"
+        code, out = self.edit("backtests/soxl-labu-dpst/analyze.py", hang, RUN_TESTS_TIMEOUT="1")
+        self.assertEqual(code, 0)
+        self.assertEqual(out["decision"], "block")
+        self.assertIn("didn't finish within 1 s", out["reason"])
+
+    def test_long_output_keeps_the_first_failure(self):
+        many = "import unittest\n\nclass T(unittest.TestCase):\n" + "".join(
+            f"    def test_{c}(self):\n        self.fail('{c}' * 500)\n" for c in "abcdefghijklmnopqrst")
+        reason = self.edit("tests/test_tiny.py", many)[1]["reason"]
+        self.assertIn("FAIL: test_a ", reason)  # the first failure, at the top
+        self.assertIn("FAILED (failures=20)", reason)  # the summary, at the bottom
+        self.assertIn("characters cut", reason)
+        self.assertLess(len(reason), 4500)
+
     def test_ignores_input_it_cant_read(self):
         env = self.env()
-        for stdin in ("not json", "{}", '{"tool_input": {}}'):
+        for stdin in ("not json", "{}", '{"tool_input": {}}', "[]", "null", '"x"', '{"tool_input": "x"}',
+                      '{"tool_input": {"file_path": 5}}', '{"tool_input": {"file_path": "a\\u0000b"}}'):
             with self.subTest(stdin):
                 p = subprocess.run([sys.executable, str(HOOK)], input=stdin, env=env, capture_output=True, text=True)
                 self.assertEqual((p.returncode, p.stdout), (0, ""))
