@@ -37,7 +37,8 @@ class Grading(unittest.TestCase):
     def test_parse_stream(self):
         run = run_evals.parse_stream(stream("compare_funds", "get_results", answer="It made **+283.7%**."))
         self.assertEqual(run, {"tools": [run_evals.PREFIX + "compare_funds", run_evals.PREFIX + "get_results"],
-                               "answer": "It made **+283.7%**.", "cost_usd": 0.05, "error": None, "server": "connected"})
+                               "answer": "It made **+283.7%**.", "cost_usd": 0.05, "error": None, "server": "connected",
+                               "model": None, "seconds": 0.0})
 
     def test_pass(self):
         for answer in ("+283.7% total, up 5 of 5 years", "About **284 %**; 5 of 5 years were up."):
