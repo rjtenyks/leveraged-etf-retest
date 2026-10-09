@@ -1,5 +1,7 @@
 # Runs the unit tests on every pull request and on every push to main.
 # The tests use only the Python standard library and don't need the downloaded prices.
+# Branch protection (.github/branch-protection.json) requires the tests-passed job before a merge.
+# The push run re-tests what the pull request already tested; it keeps the README badge current for main.
 name: tests
 
 on:
@@ -26,3 +28,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m unittest discover -s tests -v
+
+  # The one check branch protection requires. Requiring this instead of each "unittest (3.x)" job lets the
+  # Python versions above change without editing the protection, which would otherwise wait forever for
+  # a version that no longer runs.
+  tests-passed:
+    needs: unittest
+    if: always()  # run even when unittest fails; a skipped required check would count as passing
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: test "$RESULT" = success
+        env:
+          RESULT: ${{ needs.unittest.result }}
