@@ -1,3 +1,6 @@
 # Local only: downloaded prices and results
 data/
 __pycache__/
+
+# Personal Claude Code settings (permissions, paths); only .claude/settings.json is shared
+.claude/settings.local.json
