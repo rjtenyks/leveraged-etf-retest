@@ -58,7 +58,7 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
 5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results, and redrawing the chart gives the committed image. [`check_reproducible.py`](backtests/soxl-labu-dpst/check_reproducible.py) checks both.
-6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, and the thinkScript headers. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files or the tests. They don't need the downloaded prices.
+6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, the thinkScript headers, the reproducibility check and the Claude Code hook. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files, the tests or the hook. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -101,10 +101,10 @@ The strategy replayed on SOXL, five years of daily candles:
   - Screenshots were checked for account numbers and file metadata before they went into the repo.
   - A standing rule: no passwords, card numbers, keys or account numbers in anything shared, without my explicit approval.
 - **A project hook that runs the tests.**
-  - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files or the tests, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests and hands any failures back to Claude, which fixes them before moving on.
-  - After an edit to the analysis, it also reruns the reproducibility check. When the numbers change, it tells Claude, because the README, the notes and the thinkScript labels then need updating too.
+  - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files, the tests or the hook itself, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests. If they fail or hang, the hook hands that back to Claude, which fixes it before moving on.
+  - After an edit to the analysis, it also reruns the reproducibility check on the downloaded prices. A crash there stops Claude the same way. When the numbers change, it tells Claude, because the README, the notes and the thinkScript labels then need updating too.
   - It's committed with the repo, so it works for anyone who opens the project in Claude Code. The hook has its own tests.
-- **Issues, pull requests and review.** Since the repo went public, each change is a GitHub issue and a pull request. CI must pass, Claude Code's `/code-review` reviews the pull request, and I approve and merge it.
+- **Issues, pull requests and review.** Starting with the unit tests ([#1](https://github.com/rjtenyks/leveraged-etf-retest/issues/1)), each change is a GitHub issue and a pull request. I merge only after CI passes and Claude Code's `/code-review` has reviewed the pull request. The review's findings, and what was done about each, are posted on the pull request.
 - **Plan mode.** The cross-machine handoff page was planned first. I corrected the plan to add the confidential-information rule and its checks, then approved it.
 - **Connectors (MCP).**
   - Google Drive moved files from the PC to the laptop early on.
