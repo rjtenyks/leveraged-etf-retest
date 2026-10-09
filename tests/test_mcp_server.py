@@ -95,6 +95,12 @@ class InProcess(WithFixture):
         self.assertIn("fetch_prices.py, then analyze.py", out.content[0].text)
 
 
+class Installed(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("CI"), "only in CI, where requirements.txt is installed")
+    def test_ci_has_the_mcp_package(self):
+        self.assertTrue(HAVE_MCP, "CI must install requirements.txt, or the MCP server tests silently skip")
+
+
 @unittest.skipUnless(HAVE_MCP, SKIP)
 class OverStdio(WithFixture):
     """The way Claude Code runs it (.mcp.json): server.py as its own process, talking over stdin and stdout."""
