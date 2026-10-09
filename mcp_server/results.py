@@ -91,6 +91,7 @@ SECTIONS = {
         "abs_move": "average size of the move in each part of the day: overnight, 9:30-10:30, 10:30-11:30, 11:30-12:30, "
                     "12:30-1:30, 1:30-2:30, 2:30-3:30, 3:30-4:00",
         "down_day_loss_share": "% of down days' total loss that came overnight, in the first hour, and in the rest of the day",
+        "worst10_cutoff": "the day's move (%) at the edge of the worst 10% of days in the hourly data's window",
         "low_hour_up_days, low_hour_worst10": "% of up days, and of the worst 10% of days, whose low came in each hourly "
                                               "bar: 9:30-10:30, 10:30-11:30, 11:30-12:30, 12:30-1:30, 1:30-2:30, 2:30-3:30, 3:30-4:00",
         "last30": "by where the day stood at 3:30 vs the prior close: n, last30 = average % move 3:30-4:00, fell = % of days "
