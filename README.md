@@ -57,8 +57,8 @@ The full pattern-by-pattern comparison is in [notes/soxl-labu-dpst-5yr-retest.md
    - The daily study showed RSI(2) 25.8 and buy triggers of 147.35 and 153.13, matching the backtest to the cent.
    - The watchlist column matched on all three rows.
    - The strategy's own report listed the same 57 SOXL trades at the same prices.
-5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results.
-6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, and the thinkScript headers. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`. They don't need the downloaded prices.
+5. **Reproducible.** Running `analyze.py` again in a fresh folder gives byte-identical results, and redrawing the chart gives the committed image. [`check_reproducible.py`](backtests/soxl-labu-dpst/check_reproducible.py) checks both.
+6. **Unit tests.** The tests in [`tests/`](tests/) check the statistics against textbook values, the trade simulator against examples worked out by hand, the chart script, and the thinkScript headers. To check the tests themselves, 15 different bugs were put into the code on purpose, one at a time, and the tests caught every one. GitHub Actions runs them on every pull request and every push to `main`, and a Claude Code hook runs them after Claude edits the analysis, the thinkScript files or the tests. They don't need the downloaded prices.
 
 ## The models in thinkorswim
 
@@ -100,6 +100,11 @@ The strategy replayed on SOXL, five years of daily candles:
   - Global git `pre-commit` and `pre-push` hooks run gitleaks and a list of private values on every commit in every repo. They are never bypassed.
   - Screenshots were checked for account numbers and file metadata before they went into the repo.
   - A standing rule: no passwords, card numbers, keys or account numbers in anything shared, without my explicit approval.
+- **A project hook that runs the tests.**
+  - [`.claude/settings.json`](.claude/settings.json) registers a `PostToolUse` hook. After Claude edits the analysis, the thinkScript files or the tests, [`run_tests.py`](.claude/hooks/run_tests.py) runs the unit tests and hands any failures back to Claude, which fixes them before moving on.
+  - After an edit to the analysis, it also reruns the reproducibility check. When the numbers change, it tells Claude, because the README, the notes and the thinkScript labels then need updating too.
+  - It's committed with the repo, so it works for anyone who opens the project in Claude Code. The hook has its own tests.
+- **Issues, pull requests and review.** Since the repo went public, each change is a GitHub issue and a pull request. CI must pass, Claude Code's `/code-review` reviews the pull request, and I approve and merge it.
 - **Plan mode.** The cross-machine handoff page was planned first. I corrected the plan to add the confidential-information rule and its checks, then approved it.
 - **Connectors (MCP).**
   - Google Drive moved files from the PC to the laptop early on.
@@ -117,6 +122,7 @@ python3 backtests/soxl-labu-dpst/fetch_prices.py   # daily and hourly prices fro
 python3 backtests/soxl-labu-dpst/analyze.py        # all tests and backtests -> data/soxl-labu-dpst/results_5y.json
 python3 backtests/soxl-labu-dpst/make_chart.py     # the chart above -> docs/images/soxl-growth-5y.svg
 python3 -m unittest discover -s tests             # the unit tests (no prices needed)
+python3 backtests/soxl-labu-dpst/check_reproducible.py   # rerun in a fresh folder, compare results and chart
 ```
 
 On Windows, Python has no built-in time-zone database, so run `pip install tzdata` first ([Python docs](https://docs.python.org/3/library/zoneinfo.html#data-sources)). Linux and macOS need nothing extra.
@@ -133,6 +139,7 @@ Yahoo only serves recent hourly bars, so a fresh download covers a later window 
 | `docs/images/` | Screenshots and the chart |
 | `tests/` | Unit tests, standard library `unittest` |
 | `.github/workflows/` | CI: runs the tests on every pull request |
+| `.claude/` | Claude Code project settings and the hook that runs the tests after each edit |
 | [`CHANGELOG.md`](CHANGELOG.md) | What was done and when |
 
 ## Disclaimer
