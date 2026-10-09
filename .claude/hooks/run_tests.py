@@ -15,6 +15,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR") or pathlib.Path(__file__).resolve().parents[2]).resolve()
 WATCHED = ("backtests", "studies", "tests")
@@ -35,7 +36,11 @@ def edited_file(event):
 
 
 def run(*args):
-    p = subprocess.run([sys.executable, *args], cwd=ROOT, capture_output=True, text=True, timeout=90)
+    # A fresh, empty bytecode cache for each run. Python reuses a cached .pyc when the source has the same
+    # size and timestamp, so a quick same-length edit (0.5 -> 0.4) could otherwise test the old code.
+    with tempfile.TemporaryDirectory() as cache:
+        p = subprocess.run([sys.executable, *args], cwd=ROOT, capture_output=True, text=True, timeout=90,
+                           env=dict(os.environ, PYTHONPYCACHEPREFIX=cache))
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
