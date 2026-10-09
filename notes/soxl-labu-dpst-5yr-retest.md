@@ -5,7 +5,7 @@ The claude.ai page "SOXL · LABU · DPST Patterns" tested two years (Sep 25, 202
 The same results with charts per fund, and the code with copy buttons: [SOXL · LABU · DPST Retest](https://claude.ai/artifact/6KbNAQx5n3ZkcqvesSobm9).
 
 - **Daily tests:** Oct 7, 2021 – Oct 6, 2026, 1,254 sessions per fund. These five years include the 2022 chip crash (SOXL −71% in year 1) and the March 2023 regional-bank crisis (DPST −36% in one day).
-- **Time-of-day tests:** Yahoo keeps hourly bars back to Nov 7, 2023 only: 720 full days, about 3 years. Alpha Vantage sells older intraday data on a paid plan only. "3 of 3 years" below means the same direction in each of the three 12-month periods.
+- **Time-of-day tests:** Yahoo keeps hourly bars back to Nov 7, 2023 only: 720 full days for SOXL and 721 for LABU and DPST, about 3 years. Alpha Vantage sells older intraday data on a paid plan only. "3 of 3 years" below means the same direction in each of the three 12-month periods.
 - **Method:** same definitions as the page (Wilder RSI, Bollinger 20 ± 2, 2-sigma = twice the trailing 60-day standard deviation). Trades at the close, 0.05% cost per side, dividends included. Code in `backtests/soxl-labu-dpst/`. The prices are in `data/soxl-labu-dpst/` (not in git).
 - **Not retested:** CPI days. No source of past CPI release dates was reachable from this laptop (BLS blocks downloads). The page rated it weak (p = 0.6).
 
