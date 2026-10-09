@@ -93,8 +93,10 @@ def parse_stream(lines):
             run["answer"] = event.get("result") or ""
             run["cost_usd"] = event.get("total_cost_usd")
             run["seconds"] = (event.get("duration_ms") or 0) / 1000
-            if event.get("is_error") or event.get("subtype") != "success":
+            if event.get("subtype") != "success":
                 run["error"] = event.get("subtype") or "error"
+            elif event.get("is_error"):  # a refused request, such as a usage limit: the reason is the result text
+                run["error"] = (event.get("result") or "error").strip()[:200]
     return run
 
 
