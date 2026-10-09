@@ -1,14 +1,8 @@
 """The hand-written statistics in analyze.py, checked against textbook values."""
 import unittest
 
-from support import load_script
-
-analyze = load_script("analyze")
-
-
-def t_test_p(t, df):
-    """Two-sided p-value of Student's t, the way welch_p computes it."""
-    return analyze.betainc(df / 2, 0.5, df / (df + t * t))
+import support  # noqa: F401  (puts the backtest scripts on the import path)
+import analyze
 
 
 class IncompleteBeta(unittest.TestCase):
@@ -27,14 +21,14 @@ class IncompleteBeta(unittest.TestCase):
 
 class StudentT(unittest.TestCase):
     def test_t2_df10(self):
-        self.assertAlmostEqual(t_test_p(2.0, 10), 0.07339, places=5)
+        self.assertAlmostEqual(analyze.t_pvalue(2.0, 10), 0.07339, places=5)
 
     def test_critical_value_df10(self):
         # 2.228 is the two-sided 5% critical value for 10 degrees of freedom
-        self.assertAlmostEqual(t_test_p(2.228, 10), 0.05, places=4)
+        self.assertAlmostEqual(analyze.t_pvalue(2.228, 10), 0.05, places=4)
 
     def test_t2_df8(self):
-        self.assertAlmostEqual(t_test_p(2.0, 8), 0.08052, places=5)
+        self.assertAlmostEqual(analyze.t_pvalue(2.0, 8), 0.08052, places=5)
 
 
 class Welch(unittest.TestCase):
@@ -69,6 +63,8 @@ class BenjaminiHochberg(unittest.TestCase):
         self.assertEqual(sum(x <= 0.05 for x in q), 4)
         self.assertAlmostEqual(q[3], 0.035625, places=6)  # 0.0095 x 15 / 4
         self.assertAlmostEqual(q[4], 0.0603, places=6)  # 0.0201 x 15 / 5, just above the line
+        # step-up: q is the smallest p x m / rank at this rank or above, so 6th place gets 7th's 0.0298 x 15 / 7
+        self.assertAlmostEqual(q[5], 0.0298 * 15 / 7, places=12)  # not 0.0278 x 15 / 6 = 0.0695
 
     def test_keeps_input_order(self):
         q = analyze.bh_qvalues([0.01, 0.04, 0.03, 0.005])
