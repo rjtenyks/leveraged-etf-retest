@@ -8,7 +8,7 @@ A 5-year retest of a SOXL · LABU · DPST pattern study, and the thinkorswim cod
 - `notes/`: the full results. `docs/images/`: screenshots and the README chart.
 - `data/`: downloaded prices and results, **git-ignored**.
 - `mcp_server/`: the MCP server. `results.py` holds the answers (standard library only); `server.py` wraps them as tools with the `mcp` SDK. `.mcp.json` starts it. `evals/run_evals.py` is its mini eval: it runs real `claude -p` requests and costs usage, so run it when the tools, their descriptions or the results change, not after every edit.
-- `tests/`: `unittest`, standard library only, no downloaded prices needed. Run from the repo root: `.venv/bin/python -m unittest discover -s tests` (with plain `python3`, the MCP server tests skip). CI (`.github/workflows/tests.yml`) runs them on every pull request, and its `tests-passed` job must pass before a merge.
+- `tests/`: `unittest`, no downloaded prices needed. Standard library only, except the MCP server tests, which need the `mcp` package and skip without it. Run from the repo root: `.venv/bin/python -m unittest discover -s tests` (with plain `python3`, the MCP server tests skip). CI (`.github/workflows/tests.yml`) runs them on every pull request, and its `tests-passed` job must pass before a merge.
 - `.claude/`: a project hook. After an Edit or Write under `backtests/`, `studies/`, `tests/`, `mcp_server/`, `evals/` or `.claude/`, `hooks/run_tests.py` runs the tests, with `.venv`'s Python when it exists. After one under `backtests/` it also runs `check_reproducible.py`, which skips when the downloaded prices or saved results aren't there. Edits made through Bash don't trigger it, so run the tests yourself after those.
 
 ## Rules

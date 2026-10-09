@@ -1,5 +1,6 @@
 # Runs the unit tests on every pull request and on every push to main.
-# The tests use only the Python standard library and don't need the downloaded prices.
+# The tests don't need the downloaded prices. Most use only the standard library; the MCP server tests need the
+# packages in requirements.txt, installed below.
 # Branch protection (.github/branch-protection.json) requires the tests-passed job before a merge.
 # The push run re-tests what the pull request already tested; it keeps the README badge current for main.
 name: tests
